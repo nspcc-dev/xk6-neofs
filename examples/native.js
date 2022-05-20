@@ -18,5 +18,7 @@ export default function () {
     let resp = neofs_cli.put(container, headers, payload)
     if (resp.success) {
        neofs_cli.get(container, resp.object_id)
+    } else {
+        console.log(resp.error)
     }
 }

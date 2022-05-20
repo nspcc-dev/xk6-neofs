@@ -28,6 +28,12 @@ type (
 	PutResponse struct {
 		Success  bool
 		ObjectID string
+		Error    string
+	}
+
+	GetResponse struct {
+		Success bool
+		Error   string
 	}
 )
 
@@ -78,14 +84,15 @@ func (c *Client) Put(inputContainerID string, headers map[string]string, payload
 	objectWriter, err := c.cli.ObjectPutInit(c.vu.Context(), client.PrmObjectPutInit{})
 	if err != nil {
 		stats.Report(c.vu, objPutFails, 1)
-		return PutResponse{Success: false}
+		return PutResponse{Success: false, Error: err.Error()}
 	}
 
 	objectWriter.WithinSession(tok)
 
 	if !objectWriter.WriteHeader(o) {
 		stats.Report(c.vu, objPutFails, 1)
-		return PutResponse{Success: false}
+		_, err := objectWriter.Close()
+		return PutResponse{Success: false, Error: err.Error()}
 	}
 
 	n, _ := rdr.Read(buf)
@@ -99,7 +106,7 @@ func (c *Client) Put(inputContainerID string, headers map[string]string, payload
 	resp, err := objectWriter.Close()
 	if err != nil {
 		stats.Report(c.vu, objPutFails, 1)
-		return PutResponse{Success: false}
+		return PutResponse{Success: false, Error: err.Error()}
 	}
 
 	stats.ReportDataSent(c.vu, float64(sz))
@@ -111,7 +118,7 @@ func (c *Client) Put(inputContainerID string, headers map[string]string, payload
 	return PutResponse{Success: true, ObjectID: id.String()}
 }
 
-func (c *Client) Get(inputContainerID, inputObjectID string) bool {
+func (c *Client) Get(inputContainerID, inputObjectID string) GetResponse {
 	var (
 		buf = make([]byte, 4*1024)
 		sz  int
@@ -152,13 +159,14 @@ func (c *Client) Get(inputContainerID, inputObjectID string) bool {
 	objectReader, err := c.cli.ObjectGetInit(c.vu.Context(), prmObjectGetInit)
 	if err != nil {
 		stats.Report(c.vu, objGetFails, 1)
-		return false
+		return GetResponse{Success: false, Error: err.Error()}
 	}
 
 	var o object.Object
 	if !objectReader.ReadHeader(&o) {
 		stats.Report(c.vu, objGetFails, 1)
-		return false
+		_, err := objectReader.Close()
+		return GetResponse{Success: false, Error: err.Error()}
 	}
 
 	n, _ := objectReader.Read(buf)
@@ -170,10 +178,10 @@ func (c *Client) Get(inputContainerID, inputObjectID string) bool {
 	_, err = objectReader.Close()
 	if err != nil {
 		stats.Report(c.vu, objGetFails, 1)
-		return false
+		return GetResponse{Success: false, Error: err.Error()}
 	}
 
 	stats.Report(c.vu, objGetDuration, metrics.D(time.Since(start)))
 	stats.ReportDataReceived(c.vu, float64(sz))
-	return true
+	return GetResponse{Success: true}
 }
