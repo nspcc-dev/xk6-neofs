@@ -13,7 +13,7 @@ export const options = {
 
 export default function () {
     const key = uuidv4();
-    if (s3_cli.put(bucket, key, payload)) {
+    if (s3_cli.put(bucket, key, payload).success) {
         s3_cli.get(bucket, key )
     }
 }

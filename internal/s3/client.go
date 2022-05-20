@@ -17,9 +17,19 @@ type (
 		vu  modules.VU
 		cli *s3.Client
 	}
+
+	PutResponse struct {
+		Success bool
+		Error   string
+	}
+
+	GetResponse struct {
+		Success bool
+		Error   string
+	}
 )
 
-func (c *Client) Put(bucket, key string, payload []byte) bool {
+func (c *Client) Put(bucket, key string, payload []byte) PutResponse {
 	rdr := bytes.NewReader(payload)
 	sz := rdr.Size()
 
@@ -33,15 +43,15 @@ func (c *Client) Put(bucket, key string, payload []byte) bool {
 	})
 	if err != nil {
 		stats.Report(c.vu, objPutFails, 1)
-		return false
+		return PutResponse{Success: false, Error: err.Error()}
 	}
 
 	stats.ReportDataSent(c.vu, float64(sz))
 	stats.Report(c.vu, objPutDuration, metrics.D(time.Since(start)))
-	return true
+	return PutResponse{Success: true}
 }
 
-func (c *Client) Get(bucket, key string) bool {
+func (c *Client) Get(bucket, key string) GetResponse {
 	var (
 		buf = make([]byte, 4*1024)
 		sz  int
@@ -54,7 +64,7 @@ func (c *Client) Get(bucket, key string) bool {
 	})
 	if err != nil {
 		stats.Report(c.vu, objGetFails, 1)
-		return false
+		return GetResponse{Success: false, Error: err.Error()}
 	}
 	stats.Report(c.vu, objGetDuration, metrics.D(time.Since(start)))
 	for {
@@ -67,5 +77,5 @@ func (c *Client) Get(bucket, key string) bool {
 		}
 	}
 	stats.ReportDataReceived(c.vu, float64(sz))
-	return true
+	return GetResponse{Success: true}
 }
