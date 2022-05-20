@@ -47,8 +47,9 @@ const neofsCli = native.connect("s01.neofs.devenv:8080", "")
 
 #### Methods
 - `put(container_id, headers, payload)`. Returns dictionary with `success` 
-  boolean flag and `container_id` string.
-- `get(container_id, object_id)`. Returns boolean flag.
+  boolean flag, `object_id` string, and `error` string.
+- `get(container_id, object_id)`. Returns dictionary with `success` boolean
+  flag, and `error` string.
 
 ### S3
 
@@ -63,8 +64,10 @@ const s3cli = s3.connect("http://s3.neofs.devenv:8080")
 ```
 
 #### Methods
-- `put(bucket, key, payload)`. Returns boolean flag.
-- `get(bucket, key)`. Returns boolean flag.
+- `put(bucket, key, payload)`. Returns dictionary with `success` boolean flag 
+  and `error` string.
+- `get(bucket, key)`. Returns dictionary with `success` boolean flag and `error`
+  string.
 
 ## Examples
 
