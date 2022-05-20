@@ -1,7 +1,7 @@
 import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 import native from 'k6/x/neofs/native';
 
-const payload = new Uint8Array(open('../go.sum', 'b'));
+const payload = open('../go.sum', 'b');
 const container = "AjSxSNNXbJUDPqqKYm1VbFVDGCakbpUNH8aGjPmGAH3B"
 const neofs_cli = native.connect("s01.neofs.devenv:8080", "")
 

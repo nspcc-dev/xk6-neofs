@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"time"
 
+	"github.com/dop251/goja"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
@@ -37,8 +38,8 @@ type (
 	}
 )
 
-func (c *Client) Put(inputContainerID string, headers map[string]string, payload []byte) PutResponse {
-	rdr := bytes.NewReader(payload)
+func (c *Client) Put(inputContainerID string, headers map[string]string, payload goja.ArrayBuffer) PutResponse {
+	rdr := bytes.NewReader(payload.Bytes())
 	sz := rdr.Size()
 
 	// preparation stage
