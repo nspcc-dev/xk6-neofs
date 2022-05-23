@@ -50,6 +50,10 @@ const neofsCli = native.connect("s01.neofs.devenv:8080", "")
   boolean flag, `object_id` string, and `error` string.
 - `get(container_id, object_id)`. Returns dictionary with `success` boolean
   flag, and `error` string.
+- `onsite(container_id, object_id)`. Returns NeoFS object instance with prepared
+  headers. Invoke `put(headers)` method on this object to upload it into NeoFS.
+  It returns dicrionary with `success` boolean flag, `object_id` string and
+  `error` string.
 
 ### S3
 
