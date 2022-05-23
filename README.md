@@ -42,7 +42,7 @@ Create native client with `connect` method. Arguments:
 
 ```js
 import native from 'k6/x/neofs/native';
-const neofsCli = native.connect("s01.neofs.devenv:8080", "")
+const neofs_cli = native.connect("s01.neofs.devenv:8080", "")
 ```
 
 #### Methods
@@ -50,7 +50,7 @@ const neofsCli = native.connect("s01.neofs.devenv:8080", "")
   boolean flag, `object_id` string, and `error` string.
 - `get(container_id, object_id)`. Returns dictionary with `success` boolean
   flag, and `error` string.
-- `onsite(container_id, object_id)`. Returns NeoFS object instance with prepared
+- `onsite(container_id, payload)`. Returns NeoFS object instance with prepared
   headers. Invoke `put(headers)` method on this object to upload it into NeoFS.
   It returns dicrionary with `success` boolean flag, `object_id` string and
   `error` string.
@@ -64,7 +64,7 @@ Credentials are taken from default AWS configuration files and ENVs.
 
 ```js
 import s3 from 'k6/x/neofs/s3';
-const s3cli = s3.connect("http://s3.neofs.devenv:8080")
+const s3_cli = s3.connect("http://s3.neofs.devenv:8080")
 ```
 
 #### Methods
