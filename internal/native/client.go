@@ -30,10 +30,11 @@ import (
 
 type (
 	Client struct {
-		vu  modules.VU
-		key ecdsa.PrivateKey
-		tok session.Object
-		cli *client.Client
+		vu      modules.VU
+		key     ecdsa.PrivateKey
+		tok     session.Object
+		cli     *client.Client
+		bufsize int
 	}
 
 	PutResponse struct {
@@ -48,16 +49,28 @@ type (
 	}
 
 	PreparedObject struct {
-		vu  modules.VU
-		key ecdsa.PrivateKey
-		cli *client.Client
+		vu      modules.VU
+		key     ecdsa.PrivateKey
+		cli     *client.Client
+		bufsize int
 
 		hdr     object.Object
 		payload []byte
 	}
 )
 
-const defaultPutBufferSize = 4 * 1024
+const defaultBufferSize = 64 * 1024
+
+func (c *Client) SetBufferSize(size int) {
+	if size < 0 {
+		panic("buffer size must be positive")
+	}
+	if size == 0 {
+		c.bufsize = defaultBufferSize
+	} else {
+		c.bufsize = size
+	}
+}
 
 func (c *Client) Put(inputContainerID string, headers map[string]string, payload goja.ArrayBuffer) PutResponse {
 	var containerID cid.ID
@@ -93,7 +106,7 @@ func (c *Client) Put(inputContainerID string, headers map[string]string, payload
 	o.SetOwnerID(&owner)
 	o.SetAttributes(attrs...)
 
-	resp, err := put(c.vu, defaultPutBufferSize, c.cli, &tok, &o, payload.Bytes())
+	resp, err := put(c.vu, c.bufsize, c.cli, &tok, &o, payload.Bytes())
 	if err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
@@ -106,7 +119,7 @@ func (c *Client) Put(inputContainerID string, headers map[string]string, payload
 
 func (c *Client) Get(inputContainerID, inputObjectID string) GetResponse {
 	var (
-		buf = make([]byte, 4*1024)
+		buf = make([]byte, c.bufsize)
 		sz  int
 	)
 
@@ -216,9 +229,10 @@ func (c *Client) Onsite(inputContainerID string, payload goja.ArrayBuffer) Prepa
 	}
 
 	return PreparedObject{
-		vu:  c.vu,
-		key: c.key,
-		cli: c.cli,
+		vu:      c.vu,
+		key:     c.key,
+		cli:     c.cli,
+		bufsize: c.bufsize,
 
 		hdr:     *obj,
 		payload: data,
@@ -247,7 +261,7 @@ func (p PreparedObject) Put(headers map[string]string) PutResponse {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
 
-	_, err = put(p.vu, defaultPutBufferSize, p.cli, nil, &obj, p.payload)
+	_, err = put(p.vu, p.bufsize, p.cli, nil, &obj, p.payload)
 	if err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
