@@ -46,6 +46,8 @@ const neofs_cli = native.connect("s01.neofs.devenv:8080", "")
 ```
 
 #### Methods
+- `setBufferSize(size)`. Sets internal buffer size for data upload and 
+  download. Default is 64 KiB.
 - `put(container_id, headers, payload)`. Returns dictionary with `success` 
   boolean flag, `object_id` string, and `error` string.
 - `get(container_id, object_id)`. Returns dictionary with `success` boolean

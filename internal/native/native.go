@@ -116,9 +116,10 @@ func (n *Native) Connect(endpoint, wif string) (*Client, error) {
 	objGetDuration, _ = registry.NewMetric("neofs_obj_get_duration", metrics.Trend, metrics.Time)
 
 	return &Client{
-		vu:  n.vu,
-		key: pk.PrivateKey,
-		tok: tok,
-		cli: &cli,
+		vu:      n.vu,
+		key:     pk.PrivateKey,
+		tok:     tok,
+		cli:     &cli,
+		bufsize: defaultBufferSize,
 	}, nil
 }
