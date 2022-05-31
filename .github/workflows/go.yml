@@ -1,0 +1,24 @@
+name: Tests
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: [opened, synchronize]
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
