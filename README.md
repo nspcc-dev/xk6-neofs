@@ -1,3 +1,5 @@
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 # xk6-neofs
 
 This is a [k6](https://go.k6.io/k6) extension using the 
@@ -78,3 +80,7 @@ const s3_cli = s3.connect("http://s3.neofs.devenv:8080")
 ## Examples
 
 See native protocol and s3 test suit examples in [examples](./examples) dir.
+
+# License
+
+- [GNU General Public License v3.0](LICENSE)
