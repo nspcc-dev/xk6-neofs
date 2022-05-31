@@ -1,3 +1,11 @@
+<p align="center">
+<img src="./.github/logo.svg" width="500px" alt="NeoFS">
+</p>
+<p align="center">
+  <a href="https://fs.neo.org">NeoFS</a> is a decentralized distributed object storage integrated with the <a href="https://neo.org">NEO Blockchain</a>.
+</p>
+
+---
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 # xk6-neofs
