@@ -2,7 +2,7 @@
 <img src="./.github/logo.svg" width="500px" alt="NeoFS">
 </p>
 <p align="center">
-  <a href="https://fs.neo.org">NeoFS</a> is a decentralized distributed object storage integrated with the <a href="https://neo.org">NEO Blockchain</a>.
+  <a href="https://go.k6.io/k6">k6</a> extension to test and benchmark <a href="https://fs.neo.org">NeoFS</a> related protocols.
 </p>
 
 ---
@@ -10,11 +10,7 @@
 
 # xk6-neofs
 
-This is a [k6](https://go.k6.io/k6) extension using the 
-[xk6](https://github.com/k6io/xk6) system, that allows to test 
-[NeoFS](https://github.com/nspcc-dev/neofs-node) related protocols.
-
-## Build
+# Build
 
 To build a `k6` binary with this extension, first ensure you have the prerequisites:
 
@@ -42,9 +38,9 @@ xk6 build --with github.com/nspcc-dev/xk6-neofs=.
 ./k6 run test-script.js
 ```
 
-## API
+# API
 
-### Native
+## Native
 
 Create native client with `connect` method. Arguments:
 - neofs storage node endpoint
@@ -55,7 +51,7 @@ import native from 'k6/x/neofs/native';
 const neofs_cli = native.connect("s01.neofs.devenv:8080", "")
 ```
 
-#### Methods
+### Methods
 - `setBufferSize(size)`. Sets internal buffer size for data upload and 
   download. Default is 64 KiB.
 - `put(container_id, headers, payload)`. Returns dictionary with `success` 
@@ -67,7 +63,7 @@ const neofs_cli = native.connect("s01.neofs.devenv:8080", "")
   It returns dicrionary with `success` boolean flag, `object_id` string and
   `error` string.
 
-### S3
+## S3
 
 Create s3 client with `connect` method. Arguments:
 - s3 gateway endpoint
@@ -79,13 +75,13 @@ import s3 from 'k6/x/neofs/s3';
 const s3_cli = s3.connect("http://s3.neofs.devenv:8080")
 ```
 
-#### Methods
+### Methods
 - `put(bucket, key, payload)`. Returns dictionary with `success` boolean flag 
   and `error` string.
 - `get(bucket, key)`. Returns dictionary with `success` boolean flag and `error`
   string.
 
-## Examples
+# Examples
 
 See native protocol and s3 test suit examples in [examples](./examples) dir.
 
