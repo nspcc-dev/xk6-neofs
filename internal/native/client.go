@@ -8,17 +8,21 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/dop251/goja"
 	"github.com/nspcc-dev/neo-go/pkg/vm/stackitem"
+	"github.com/nspcc-dev/neofs-sdk-go/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/checksum"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
+	"github.com/nspcc-dev/neofs-sdk-go/container"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	"github.com/nspcc-dev/neofs-sdk-go/object/address"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
+	"github.com/nspcc-dev/neofs-sdk-go/policy"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/nspcc-dev/neofs-sdk-go/version"
@@ -46,6 +50,12 @@ type (
 	GetResponse struct {
 		Success bool
 		Error   string
+	}
+
+	PutContainerResponse struct {
+		Success     bool
+		ContainerID string
+		Error       string
 	}
 
 	PreparedObject struct {
@@ -164,8 +174,11 @@ func (c *Client) Get(inputContainerID, inputObjectID string) GetResponse {
 	var o object.Object
 	if !objectReader.ReadHeader(&o) {
 		stats.Report(c.vu, objGetFails, 1)
-		_, err := objectReader.Close()
-		return GetResponse{Success: false, Error: err.Error()}
+		var errorStr string
+		if _, err = objectReader.Close(); err != nil {
+			errorStr = err.Error()
+		}
+		return GetResponse{Success: false, Error: errorStr}
 	}
 
 	n, _ := objectReader.Read(buf)
@@ -183,6 +196,78 @@ func (c *Client) Get(inputContainerID, inputObjectID string) GetResponse {
 	stats.Report(c.vu, objGetDuration, metrics.D(time.Since(start)))
 	stats.ReportDataReceived(c.vu, float64(sz))
 	return GetResponse{Success: true}
+}
+
+func (c *Client) putCnrErrorResponse(err error) PutContainerResponse {
+	stats.Report(c.vu, cnrPutFails, 1)
+	return PutContainerResponse{Success: false, Error: err.Error()}
+}
+
+func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
+	stats.Report(c.vu, cnrPutTotal, 1)
+
+	opts := []container.Option{
+		container.WithAttribute(container.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10)),
+		container.WithOwnerPublicKey(&c.key.PublicKey),
+	}
+
+	if basicACLStr, ok := params["acl"]; ok {
+		basicACL, err := acl.ParseBasicACL(basicACLStr)
+		if err != nil {
+			return c.putCnrErrorResponse(err)
+		}
+		opts = append(opts, container.WithCustomBasicACL(basicACL))
+	}
+
+	placementPolicyStr, ok := params["placement_policy"]
+	if ok {
+		placementPolicy, err := policy.Parse(placementPolicyStr)
+		if err != nil {
+			return c.putCnrErrorResponse(err)
+		}
+		opts = append(opts, container.WithPolicy(placementPolicy))
+	}
+
+	containerName, hasName := params["name"]
+	if hasName {
+		opts = append(opts, container.WithAttribute(container.AttributeName, containerName))
+	}
+
+	cnr := container.New(opts...)
+
+	var err error
+	var nameScopeGlobal bool
+	if nameScopeGlobalStr, ok := params["name_scope_global"]; ok {
+		if nameScopeGlobal, err = strconv.ParseBool(nameScopeGlobalStr); err != nil {
+			return c.putCnrErrorResponse(fmt.Errorf("invalid name_scope_global param: %w", err))
+		}
+	}
+
+	if nameScopeGlobal {
+		if !hasName {
+			return c.putCnrErrorResponse(errors.New("you must provide container name if name_scope_global param is set"))
+		}
+		container.SetNativeName(cnr, containerName)
+	}
+
+	start := time.Now()
+	var prm client.PrmContainerPut
+	prm.SetContainer(*cnr)
+
+	res, err := c.cli.ContainerPut(c.vu.Context(), prm)
+	if err != nil {
+		return c.putCnrErrorResponse(err)
+	}
+
+	var wp waitParams
+	wp.setDefaults()
+
+	if err = c.waitForContainerPresence(c.vu.Context(), res.ID(), &wp); err != nil {
+		return c.putCnrErrorResponse(err)
+	}
+
+	stats.Report(c.vu, cnrPutDuration, metrics.D(time.Since(start)))
+	return PutContainerResponse{Success: true, ContainerID: res.ID().EncodeToString()}
 }
 
 func (c *Client) Onsite(inputContainerID string, payload goja.ArrayBuffer) PreparedObject {
@@ -341,4 +426,48 @@ func parseNetworkInfo(ctx context.Context, cli *client.Client) (maxObjSize, epoc
 		return false
 	})
 	return maxObjSize, epoch, hhDisabled, err
+}
+
+type waitParams struct {
+	timeout      time.Duration
+	pollInterval time.Duration
+}
+
+func (x *waitParams) setDefaults() {
+	x.timeout = 120 * time.Second
+	x.pollInterval = 5 * time.Second
+}
+
+func (c *Client) waitForContainerPresence(ctx context.Context, cnrID *cid.ID, wp *waitParams) error {
+	return waitFor(ctx, wp, func(ctx context.Context) bool {
+		var prm client.PrmContainerGet
+		if cnrID != nil {
+			prm.SetContainer(*cnrID)
+		}
+
+		_, err := c.cli.ContainerGet(ctx, prm)
+		return err == nil
+	})
+}
+
+func waitFor(ctx context.Context, params *waitParams, condition func(context.Context) bool) error {
+	wctx, cancel := context.WithTimeout(ctx, params.timeout)
+	defer cancel()
+	ticker := time.NewTimer(params.pollInterval)
+	defer ticker.Stop()
+	wdone := wctx.Done()
+	done := ctx.Done()
+	for {
+		select {
+		case <-done:
+			return ctx.Err()
+		case <-wdone:
+			return wctx.Err()
+		case <-ticker.C:
+			if condition(ctx) {
+				return nil
+			}
+			ticker.Reset(params.pollInterval)
+		}
+	}
 }

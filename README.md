@@ -44,7 +44,7 @@ xk6 build --with github.com/nspcc-dev/xk6-neofs=.
 
 Create native client with `connect` method. Arguments:
 - neofs storage node endpoint
-- WIF (empty value produces random key)
+- hex encoded private key (empty value produces random key)
 
 ```js
 import native from 'k6/x/neofs/native';
@@ -52,6 +52,10 @@ const neofs_cli = native.connect("s01.neofs.devenv:8080", "")
 ```
 
 ### Methods
+- `putContainer(params)`. The `params` is a dictionary (e.g. 
+  `{acl:'public-read-write',placement_policy:'REP 3',name:'container-name',name_global_scope:'false'}`). 
+  Returns dictionary with `success`
+  boolean flag, `container_id` string, and `error` string.
 - `setBufferSize(size)`. Sets internal buffer size for data upload and 
   download. Default is 64 KiB.
 - `put(container_id, headers, payload)`. Returns dictionary with `success` 
