@@ -25,6 +25,7 @@ if (vus_write > 0){
         vus: vus_write,
         duration: `${duration}s`,
         exec: 'obj_write', // the function this scenario will execute
+        gracefulStop: '5s',
     }
 }
 
@@ -34,6 +35,7 @@ if (vus_read > 0){
         vus: vus_read,
         duration: `${duration}s`,
         exec: 'obj_read', 
+        gracefulStop: '5s',
     }
 }
 
