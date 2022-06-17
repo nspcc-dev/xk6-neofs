@@ -14,8 +14,9 @@ let [ write, obj_size, duration ] = __ENV.PROFILE.split(':');
 let vus_read = Math.ceil(__ENV.CLIENTS/100*(100-parseInt(write)))
 let vus_write = __ENV.CLIENTS - vus_read
 
+const neofs_cli = native.connect(__ENV.NODE, "")
 const payload = crypto.randomBytes(1024*parseInt(obj_size))
-const neofs_cli = native.connect("node1.data:8080", "")
+
 
 let scenarios = {}
 
@@ -25,6 +26,7 @@ if (vus_write > 0){
         vus: vus_write,
         duration: `${duration}s`,
         exec: 'obj_write', // the function this scenario will execute
+        gracefulStop: '5s',
     }
 }
 
@@ -34,6 +36,7 @@ if (vus_read > 0){
         vus: vus_read,
         duration: `${duration}s`,
         exec: 'obj_read', 
+        gracefulStop: '5s',
     }
 }
 

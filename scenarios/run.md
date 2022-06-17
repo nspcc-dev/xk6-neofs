@@ -18,9 +18,10 @@ $ k6 run -e CID=GTiJKAntLNchKeGDHsJhda8LhChnNoPD1nfQC3NUuV2J -e PROFILE=70:1024:
 
 Options:
   * CID - container ID
-  * PROFILE - format write:obj_size:
+  * PROFILE - format write:obj_size:duration
       * write    - write operations in percent, relative to read operations
       * obj_size - size of objects in kilobytes
+      * duration - time in sec
   * CLIENTS - number of VUs for all operations
   * PRELOAD_OBJ - objects will be uploaded to the container in the Setup step and will be used for read operations
 

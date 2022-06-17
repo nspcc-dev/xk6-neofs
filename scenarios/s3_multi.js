@@ -15,7 +15,14 @@ let vus_read = Math.ceil(__ENV.CLIENTS/100*(100-parseInt(write)))
 let vus_write = __ENV.CLIENTS - vus_read
 
 const payload = crypto.randomBytes(1024*parseInt(obj_size))
-const s3_cli = s3.connect(`http://${__ENV.NODE}`)
+
+let connections = []
+let nodes = __ENV.NODES.split(',')
+for (let node of nodes) {
+    connections.push(s3.connect(`http://${node}`))
+}
+
+
 
 let scenarios = {}
 
@@ -46,6 +53,9 @@ export const options = {
 export function setup() {
     let obj_list = []
 
+    // Select random connection
+    let s3_cli = connections[Math.floor(Math.random()*connections.length)];
+
     // Prepare objects
     for (let i = 0; i < __ENV.PRELOAD_OBJ; i++) { 
         let key = uuidv4();
@@ -59,6 +69,10 @@ export function setup() {
 
 export function obj_write() {
     let key = uuidv4();
+
+    // Select random connection
+    let s3_cli = connections[Math.floor(Math.random()*connections.length)];
+
     let resp = s3_cli.put(__ENV.BUCKET, key, payload)
     if (!resp.success) {
         console.log(resp.error);
@@ -67,6 +81,10 @@ export function obj_write() {
 
 export function obj_read(data) {
    let key = data.obj_list[Math.floor(Math.random()*data.obj_list.length)];
+
+   // Select random connection
+   let s3_cli = connections[Math.floor(Math.random()*connections.length)];
+
    let resp = s3_cli.get(__ENV.BUCKET, key )
    if (!resp.success) {
        console.log(resp.error);

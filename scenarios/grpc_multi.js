@@ -1,5 +1,5 @@
 import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
-import s3 from 'k6/x/neofs/s3';
+import native from 'k6/x/neofs/native';
 import crypto from 'k6/crypto';
 
 /* 
@@ -14,8 +14,15 @@ let [ write, obj_size, duration ] = __ENV.PROFILE.split(':');
 let vus_read = Math.ceil(__ENV.CLIENTS/100*(100-parseInt(write)))
 let vus_write = __ENV.CLIENTS - vus_read
 
+
+let connections = []
+let nodes = __ENV.NODES.split(',')
+for (let node of nodes) {
+    connections.push(native.connect(node, ""))
+}
+
 const payload = crypto.randomBytes(1024*parseInt(obj_size))
-const s3_cli = s3.connect(`http://${__ENV.NODE}`)
+
 
 let scenarios = {}
 
@@ -48,26 +55,43 @@ export function setup() {
 
     // Prepare objects
     for (let i = 0; i < __ENV.PRELOAD_OBJ; i++) { 
-        let key = uuidv4();
-        let resp = s3_cli.put(__ENV.BUCKET, key, payload)
+        let headers = {
+            'unique_header': uuidv4()
+        }
+        
+        // Select random connection
+        let neofs_cli = connections[Math.floor(Math.random()*connections.length)];
+
+        let resp = neofs_cli.put( __ENV.CID, headers, payload);
         if (resp.success) {
-            obj_list.push(key)
+            obj_list.push(resp.object_id)
         }
     }
+
     return { obj_list: obj_list };
   }
 
 export function obj_write() {
-    let key = uuidv4();
-    let resp = s3_cli.put(__ENV.BUCKET, key, payload)
+    let headers = {
+        'unique_header': uuidv4()
+    }
+
+    // Select random connection
+    let neofs_cli = connections[Math.floor(Math.random()*connections.length)];
+
+    let resp = neofs_cli.put( __ENV.CID, headers, payload);
     if (!resp.success) {
         console.log(resp.error);
     }
 }
 
 export function obj_read(data) {
-   let key = data.obj_list[Math.floor(Math.random()*data.obj_list.length)];
-   let resp = s3_cli.get(__ENV.BUCKET, key )
+   let oid = data.obj_list[Math.floor(Math.random()*data.obj_list.length)];
+
+   // Select random connection
+   let neofs_cli = connections[Math.floor(Math.random()*connections.length)];
+
+   let resp = neofs_cli.get(__ENV.CID, oid)
    if (!resp.success) {
        console.log(resp.error);
    }
