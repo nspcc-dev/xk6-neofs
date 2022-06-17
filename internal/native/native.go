@@ -30,6 +30,7 @@ var (
 
 	objPutTotal, objPutFails, objPutDuration *metrics.Metric
 	objGetTotal, objGetFails, objGetDuration *metrics.Metric
+	cnrPutTotal, cnrPutFails, cnrPutDuration *metrics.Metric
 )
 
 func init() {
@@ -49,7 +50,7 @@ func (n *Native) Exports() modules.Exports {
 	return modules.Exports{Default: n}
 }
 
-func (n *Native) Connect(endpoint, wif string) (*Client, error) {
+func (n *Native) Connect(endpoint, hexPrivateKey string) (*Client, error) {
 	var (
 		cli client.Client
 		pk  *keys.PrivateKey
@@ -57,8 +58,8 @@ func (n *Native) Connect(endpoint, wif string) (*Client, error) {
 	)
 
 	pk, err = keys.NewPrivateKey()
-	if len(wif) != 0 {
-		pk, err = keys.NewPrivateKeyFromWIF(wif)
+	if len(hexPrivateKey) != 0 {
+		pk, err = keys.NewPrivateKeyFromHex(hexPrivateKey)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("invalid key: %w", err)
@@ -114,6 +115,10 @@ func (n *Native) Connect(endpoint, wif string) (*Client, error) {
 	objGetTotal, _ = registry.NewMetric("neofs_obj_get_total", metrics.Counter)
 	objGetFails, _ = registry.NewMetric("neofs_obj_get_fails", metrics.Counter)
 	objGetDuration, _ = registry.NewMetric("neofs_obj_get_duration", metrics.Trend, metrics.Time)
+
+	cnrPutTotal, _ = registry.NewMetric("neofs_cnr_put_total", metrics.Counter)
+	cnrPutFails, _ = registry.NewMetric("neofs_cnr_put_fails", metrics.Counter)
+	cnrPutDuration, _ = registry.NewMetric("neofs_cnr_put_duration", metrics.Trend, metrics.Time)
 
 	return &Client{
 		vu:      n.vu,
