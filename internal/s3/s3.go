@@ -24,8 +24,9 @@ var (
 	_ modules.Instance = &S3{}
 	_ modules.Module   = &RootModule{}
 
-	objPutTotal, objPutFails, objPutDuration *metrics.Metric
-	objGetTotal, objGetFails, objGetDuration *metrics.Metric
+	objPutTotal, objPutFails, objPutDuration                   *metrics.Metric
+	objGetTotal, objGetFails, objGetDuration                   *metrics.Metric
+	createBucketTotal, createBucketFails, createBucketDuration *metrics.Metric
 )
 
 func init() {
@@ -74,6 +75,10 @@ func (s *S3) Connect(endpoint string) (*Client, error) {
 	objGetTotal, _ = registry.NewMetric("aws_obj_get_total", metrics.Counter)
 	objGetFails, _ = registry.NewMetric("aws_obj_get_fails", metrics.Counter)
 	objGetDuration, _ = registry.NewMetric("aws_obj_get_duration", metrics.Trend, metrics.Time)
+
+	createBucketTotal, _ = registry.NewMetric("aws_create_bucket_total", metrics.Counter)
+	createBucketFails, _ = registry.NewMetric("aws_create_bucket_fails", metrics.Counter)
+	createBucketDuration, _ = registry.NewMetric("aws_create_bucket_duration", metrics.Trend, metrics.Time)
 
 	return &Client{
 		vu:  s.vu,

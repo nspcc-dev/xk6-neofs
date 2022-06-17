@@ -76,6 +76,8 @@ const s3_cli = s3.connect("http://s3.neofs.devenv:8080")
 ```
 
 ### Methods
+- `createBucket(bucket, params)`. Returns dictionary with `success` boolean flag
+  and `error` string. The `params` is a dictionary (e.g. `{acl:'private',lock_enabled:'true',location_constraint:'ru'}`)
 - `put(bucket, key, payload)`. Returns dictionary with `success` boolean flag 
   and `error` string.
 - `get(bucket, key)`. Returns dictionary with `success` boolean flag and `error`
