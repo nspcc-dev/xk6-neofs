@@ -49,12 +49,12 @@ Run `aws configure`.
 The tests will use all pre-created buckets for PUT operations and all pre-created objects for READ operations.
 
 ```shell
-./scenarios/preset/preset_s3.py --size 1024 --buckets 1 --out s3.json --endpoint node1.data:8084,node4.intra:8084 --preload_obj 500
+./scenarios/preset/preset_s3.py --size 1024 --buckets 1 --out s3.json --endpoint node4.intra:8084 --preload_obj 500
 ```
 
 3. Execute scenario with options:
 
 ```shell
-$ ./k6 run -e PROFILE=50:60 -e WRITE_OBJ_SIZE=8192 -e CLIENTS=400 -e NODES=node4.data:8084 -e PREGEN_JSON=s3.json scenarios/s3.js
+$ ./k6 run -e PROFILE=50:60 -e WRITE_OBJ_SIZE=8192 -e CLIENTS=400 -e NODES=node1.data:8084,node4.data:8084 -e PREGEN_JSON=s3.json scenarios/s3.js
 
 ```

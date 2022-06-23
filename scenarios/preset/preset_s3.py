@@ -88,7 +88,7 @@ def execute_cmd(cmd_line):
 def create_bucket():
     bucket_name = str(uuid.uuid4())
 
-    cmd_line = f"aws --no-verify-ssl s3api create-bucket --bucket {bucket_name} --endpoint {args.endpoint} "
+    cmd_line = f"aws --no-verify-ssl s3api create-bucket --bucket {bucket_name} --endpoint http://{args.endpoint} "
     
     out, success = execute_cmd(cmd_line)
     
@@ -106,7 +106,7 @@ def create_bucket():
 def upload_object(bucket, payload_filepath):
     object_name = str(uuid.uuid4())
 
-    cmd_line = f"aws s3api put-object --bucket {bucket} --key {object_name} --body {payload_filepath} --endpoint {args.endpoint} "
+    cmd_line = f"aws s3api put-object --bucket {bucket} --key {object_name} --body {payload_filepath} --endpoint http://{args.endpoint} "
     out, success = execute_cmd(cmd_line)
 
     if not success:
