@@ -9,7 +9,7 @@
 The tests will use all pre-created containers for PUT operations and all pre-created objects for READ operations.
 
 ```shell
-python3 scenaios/preset/preset_grpc.py --size 1024 --containers 1 --out grpc.json --endpoint node4.intra:8080 --preload_obj 500
+./scenarios/preset/preset_grpc.py --size 1024 --containers 1 --out grpc.json --endpoint node4.intra:8080 --preload_obj 500
 ```
 
 2. Execute scenario with options:
@@ -49,7 +49,7 @@ Run `aws configure`.
 The tests will use all pre-created buckets for PUT operations and all pre-created objects for READ operations.
 
 ```shell
-python3 scenaios/preset/preset_s3.py --size 1024 --containers 1 --out s3.json --endpoint node1.data:8080,node4.intra:8080 --preload_obj 500
+./scenarios/preset/preset_s3.py --size 1024 --buckets 1 --out s3.json --endpoint node1.data:8084,node4.intra:8084 --preload_obj 500
 ```
 
 3. Execute scenario with options:
