@@ -1,4 +1,3 @@
-import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 import native from 'k6/x/neofs/native';
 import crypto from 'k6/crypto';
 import { SharedArray } from 'k6/data';
@@ -85,3 +84,10 @@ export function obj_read() {
         console.log(resp.error);
     } 
 }
+
+export function uuidv4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      let r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
