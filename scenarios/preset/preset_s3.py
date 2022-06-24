@@ -17,6 +17,7 @@ parser.add_argument('--buckets', help='Number of buckets to create')
 parser.add_argument('--out', help='JSON file with output')
 parser.add_argument('--preload_obj', help='Number of pre-loaded objects')
 parser.add_argument('--endpoint', help='S3 Gateway address')
+parser.add_argument('--update', help='Save existed containers')
 
 args=parser.parse_args()
 print(args)
@@ -27,17 +28,25 @@ def main():
     objects_struct = []
     payload_filepath='/tmp/data_file'
 
-    print(f"Create buckets: {args.buckets}")
+
+    if args.update:
+        # Open file
+        with open(args.out) as f:
+            data_json = json.load(f)
+            bucket_list = data_json['buckets']
+        # Get CID list
+    else:
+        print(f"Create buckets: {args.buckets}")
     
-    with ProcessPoolExecutor(max_workers=10) as executor:
-        buckets_runs = {executor.submit(create_bucket): _ for _ in range(int(args.buckets))}
+        with ProcessPoolExecutor(max_workers=10) as executor:
+            buckets_runs = {executor.submit(create_bucket): _ for _ in range(int(args.buckets))}
 
-    for run in buckets_runs:
-        if run.result() is not None:
-            bucket_list.append(run.result()) 
+        for run in buckets_runs:
+            if run.result() is not None:
+                bucket_list.append(run.result()) 
 
+        print("Create buckets: Completed")
 
-    print("Create buckets: Completed")
     print(f" > Buckets: {bucket_list}")
 
     print(f"Upload objects to each bucket: {args.preload_obj} ")

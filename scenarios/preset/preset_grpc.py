@@ -17,6 +17,7 @@ parser.add_argument('--containers', help='Number of containers to create')
 parser.add_argument('--out', help='JSON file with output')
 parser.add_argument('--preload_obj', help='Number of pre-loaded objects')
 parser.add_argument('--endpoint', help='Node address')
+parser.add_argument('--update', help='Save existed containers')
 
 args=parser.parse_args()
 print(args)
@@ -27,17 +28,23 @@ def main():
     objects_struct = []
     payload_filepath='/tmp/data_file'
 
-    print(f"Create containers: {args.containers}")
-    
-    with ProcessPoolExecutor(max_workers=10) as executor:
-        containers_runs = {executor.submit(create_container): _ for _ in range(int(args.containers))}
+    if args.update:
+        # Open file
+        with open(args.out) as f:
+            data_json = json.load(f)
+            container_list = data_json['containers']
+        # Get CID list
+    else:
+        print(f"Create containers: {args.containers}")
+        with ProcessPoolExecutor(max_workers=10) as executor:
+            containers_runs = {executor.submit(create_container): _ for _ in range(int(args.containers))}
 
-    for run in containers_runs:
-        if run.result() is not None:
-            container_list.append(run.result()) 
+        for run in containers_runs:
+            if run.result() is not None:
+                container_list.append(run.result()) 
 
+        print("Create containers: Completed")
 
-    print("Create containers: Completed")
     print(f" > Containers: {container_list}")
 
     print(f"Upload objects to each container: {args.preload_obj} ")
