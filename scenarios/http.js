@@ -81,6 +81,6 @@ export function obj_read() {
     let random_read_obj = obj_list[Math.floor(Math.random()*obj_list.length)];
     let resp = http.get(`http://${rand_node}/get/${random_read_obj.container}/${random_read_obj.object}`);
     if (resp.status != 200) {
-        console.log(`${oid} - ${resp.status}`);
+        console.log(`${random_read_obj.object} - ${resp.status}`);
     }
 }
