@@ -1,0 +1,9 @@
+{
+    "load": "REP 1 IN X CBF 1 SELECT 1 FROM * AS X",
+    "rep1_node4_cbf1": "REP 1 IN X CBF 1 SELECT 4 FROM * AS X",
+    "rep1_node2_cbf2": "REP 1 IN X CBF 2 SELECT 2 FROM * AS X",
+    "rep2_node4_cbf1": "REP 2 IN X CBF 1 SELECT 4 FROM * AS X",
+    "rep2_node2_cbf2": "REP 2 IN X CBF 2 SELECT 2 FROM * AS X",
+    "rep3_node4_cbf1": "REP 3 IN X CBF 1 SELECT 4 FROM * AS X",
+    "rep3_node3_cbf1": "REP 3 IN X CBF 1 SELECT 3 FROM * AS X"
+}
