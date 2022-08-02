@@ -17,6 +17,8 @@ const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
    Format write:obj_size:
      * write    - write operations in percent, relative to read operations
      * duration - duration in seconds
+
+   OBJ_NAME - this name will be used for all write operations instead of randow generation in case of declared.
 */
 
 const [ write, duration ] = __ENV.PROFILE.split(':');
