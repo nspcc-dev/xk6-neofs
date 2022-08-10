@@ -1,6 +1,7 @@
 import native from 'k6/x/neofs/native';
 import crypto from 'k6/crypto';
 import { SharedArray } from 'k6/data';
+import { sleep } from 'k6';
 
 const obj_list = new SharedArray('obj_list', function () {
     return JSON.parse(open(__ENV.PREGEN_JSON)).objects; });
@@ -75,6 +76,10 @@ export function obj_write() {
     if (!resp.success) {
         console.log(resp.error);
     }
+    if (__ENV.SLEEP) {
+        sleep(__ENV.SLEEP);
+    }
+   
 }
 
 export function obj_read() {
@@ -83,6 +88,9 @@ export function obj_read() {
     if (!resp.success) {
         console.log(resp.error);
     } 
+    if (__ENV.SLEEP) {
+        sleep(__ENV.SLEEP);
+    }
 }
 
 export function uuidv4() {

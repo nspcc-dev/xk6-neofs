@@ -73,7 +73,9 @@ export function obj_write() {
     if (resp.status != 200) {
         console.log(`${resp.status}`);
     }
-    //sleep(1)
+    if (__ENV.SLEEP) {
+        sleep(__ENV.SLEEP);
+    }
 }
 
 export function obj_read() {
@@ -81,6 +83,9 @@ export function obj_read() {
     let resp = http.get(`http://${rand_node}/get/${random_read_obj.container}/${random_read_obj.object}`);
     if (resp.status != 200) {
         console.log(`${random_read_obj.object} - ${resp.status}`);
+    }
+    if (__ENV.SLEEP) {
+        sleep(__ENV.SLEEP);
     }
 }
 
