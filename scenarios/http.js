@@ -72,8 +72,8 @@ export function teardown(data) {
 }
 
 export function obj_write() {
-    if (__ENV.SLEEP) {
-        sleep(__ENV.SLEEP);
+    if (__ENV.SLEEP_WRITE) {
+        sleep(__ENV.SLEEP_WRITE);
     }
 
     const container = container_list[Math.floor(Math.random() * container_list.length)];
@@ -96,8 +96,8 @@ export function obj_write() {
 }
 
 export function obj_read() {
-    if (__ENV.SLEEP) {
-        sleep(__ENV.SLEEP);
+    if (__ENV.SLEEP_READ) {
+        sleep(__ENV.SLEEP_READ);
     }
 
     const obj = obj_list[Math.floor(Math.random() * obj_list.length)];

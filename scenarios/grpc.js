@@ -99,8 +99,8 @@ export function teardown(data) {
 }
 
 export function obj_write() {
-    if (__ENV.SLEEP) {
-        sleep(__ENV.SLEEP);
+    if (__ENV.SLEEP_WRITE) {
+        sleep(__ENV.SLEEP_WRITE);
     }
 
     const headers = {
@@ -121,8 +121,8 @@ export function obj_write() {
 }
 
 export function obj_read() {
-    if (__ENV.SLEEP) {
-        sleep(__ENV.SLEEP);
+    if (__ENV.SLEEP_READ) {
+        sleep(__ENV.SLEEP_READ);
     }
 
     const obj = obj_list[Math.floor(Math.random() * obj_list.length)];
@@ -133,8 +133,8 @@ export function obj_read() {
 }
 
 export function obj_delete() {
-    if (__ENV.SLEEP) {
-        sleep(__ENV.SLEEP);
+    if (__ENV.SLEEP_DELETE) {
+        sleep(__ENV.SLEEP_DELETE);
     }
 
     const obj = obj_to_delete_selector.nextObject();
