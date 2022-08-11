@@ -1,25 +1,26 @@
 #!/usr/bin/python3
 
-from multiprocessing import Process
-import uuid
-import shlex
-from subprocess import check_output, CalledProcessError, STDOUT
+import argparse
 import json
-import os 
-import argparse, sys
-
+import os
+import shlex
 from concurrent.futures import ProcessPoolExecutor
+from subprocess import check_output, CalledProcessError, STDOUT
 
-parser=argparse.ArgumentParser()
-
+parser = argparse.ArgumentParser()
 parser.add_argument('--size', help='Upload objects size in kb')
 parser.add_argument('--containers', help='Number of containers to create')
 parser.add_argument('--out', help='JSON file with output')
 parser.add_argument('--preload_obj', help='Number of pre-loaded objects')
+parser.add_argument(
+    "--policy",
+    help="Container placement policy",
+    default="REP 1 IN X CBF 1 SELECT 1 FROM * AS X"
+)
 parser.add_argument('--endpoint', help='Node address')
 parser.add_argument('--update', help='Save existed containers')
 
-args=parser.parse_args()
+args = parser.parse_args()
 print(args)
 
 
@@ -33,7 +34,6 @@ def main():
         with open(args.out) as f:
             data_json = json.load(f)
             container_list = data_json['containers']
-        # Get CID list
     else:
         print(f"Create containers: {args.containers}")
         with ProcessPoolExecutor(max_workers=10) as executor:
@@ -78,6 +78,7 @@ def random_payload(payload_filepath):
     with open('%s'%payload_filepath, 'wb') as fout:
         fout.write(os.urandom(1024*int(args.size))) 
 
+
 def execute_cmd(cmd_line):
     args = shlex.split(cmd_line)
     output = ""
@@ -93,11 +94,11 @@ def execute_cmd(cmd_line):
 
 
 def create_container():
-    cmd_line = f"neofs-cli --rpc-endpoint {args.endpoint} container create -g --policy 'REP 1 IN X CBF 1 SELECT 1 FROM * AS X' --basic-acl public-read-write --await"   
+    cmd_line = f"neofs-cli --rpc-endpoint {args.endpoint} container create -g --policy {args.policy} --basic-acl public-read-write --await"
     output, success = execute_cmd(cmd_line)
 
     if not success:
-            print(f" > Container has not been created.")
+        print(f" > Container has not been created.")
     else:
         try:
             fst_str = output.split('\n')[0]

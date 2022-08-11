@@ -11,7 +11,8 @@ Scenarios `grpc.js`, `http.js` and `s3.js` support the following options:
   * `REGISTRY_FILE` - if set, all produced objects will be stored in database for subsequent verification. Database file name will be set to the value of `REGISTRY_FILE`.
   * `WRITE_OBJ_SIZE` - object size in kb for write(PUT) operations.
   * `PREGEN_JSON` - path to json file with pre-generated containers and objects (in case of http scenario we use json pre-generated for grpc scenario).
-  * `SLEEP` - time interval (in seconds) between VU iterations.
+  * `SLEEP_WRITE` - time interval (in seconds) between writing VU iterations.
+  * `SLEEP_READ` - time interval (in seconds) between reading VU iterations.
 
 Examples of how to use these options are provided below for each scenario.
 
@@ -35,6 +36,7 @@ Options (in addition to the common options):
   * `GRPC_ENDPOINTS` - GRPC endpoints of neoFS in format `host:port`. To specify multiple endpoints separate them by comma.
   * `DELETERS` - number of VUs performing delete operations (using deleters requires that options `DELETE_AGE` and `REGISTRY_FILE` are specified as well).
   * `DELETE_AGE` - age of object in seconds before which it can not be deleted. This parameter can be used to control how many objects we have in the system under load.
+  * `SLEEP_DELETE` - time interval (in seconds) between deleting VU iterations.
 
 ## HTTP
 
@@ -90,6 +92,7 @@ Options (in addition to the common options):
   * `S3_ENDPOINTS` - endpoints of S3 gateways in format `host:port`. To specify multiple endpoints separate them by comma.
   * `DELETERS` - number of VUs performing delete operations (using deleters requires that options `DELETE_AGE` and `REGISTRY_FILE` are specified as well).
   * `DELETE_AGE` - age of object in seconds before which it can not be deleted. This parameter can be used to control how many objects we have in the system under load.
+  * `SLEEP_DELETE` - time interval (in seconds) between deleting VU iterations.
   * `OBJ_NAME` - if specified, this name will be used for all write operations instead of random generation.
 
 ## Verify
