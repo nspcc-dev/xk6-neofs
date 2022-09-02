@@ -1,5 +1,5 @@
+import datagen from 'k6/x/neofs/datagen';
 import native from 'k6/x/neofs/native';
-import crypto from 'k6/crypto';
 import { SharedArray } from 'k6/data';
 import { sleep } from 'k6';
 
@@ -26,7 +26,7 @@ const [ write, duration ] = __ENV.PROFILE.split(':');
 let vus_read = Math.ceil(__ENV.CLIENTS/100*(100-parseInt(write)))
 let vus_write = __ENV.CLIENTS - vus_read
 
-const payload = crypto.randomBytes(1024*parseInt(__ENV.WRITE_OBJ_SIZE))
+const generator = datagen.generator(1024 * parseInt(__ENV.WRITE_OBJ_SIZE));
 
 let nodes = __ENV.NODES.split(',')
 let rand_node = nodes[Math.floor(Math.random()*nodes.length)];
@@ -72,6 +72,7 @@ export function obj_write() {
     }
     let container = container_list[Math.floor(Math.random()*container_list.length)];
 
+    const { payload } = generator.genPayload(false);
     let resp = neofs_cli.put( container, headers, payload);
     if (!resp.success) {
         console.log(resp.error);
