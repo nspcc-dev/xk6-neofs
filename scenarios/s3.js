@@ -1,5 +1,5 @@
+import datagen from 'k6/x/neofs/datagen';
 import s3 from 'k6/x/neofs/s3';
-import crypto from 'k6/crypto';
 import { SharedArray } from 'k6/data';
 import { sleep } from 'k6';
 
@@ -28,7 +28,7 @@ const [ write, duration ] = __ENV.PROFILE.split(':');
 let vus_read = Math.ceil(__ENV.CLIENTS/100*(100-parseInt(write)))
 let vus_write = __ENV.CLIENTS - vus_read
 
-const payload = crypto.randomBytes(1024*parseInt(__ENV.WRITE_OBJ_SIZE))
+const generator = datagen.generator(1024 * parseInt(__ENV.WRITE_OBJ_SIZE));
 
 let nodes = __ENV.NODES.split(',')
 let rand_node = nodes[Math.floor(Math.random()*nodes.length)];
@@ -79,6 +79,8 @@ export function obj_write() {
     
 
     let bucket = bucket_list[Math.floor(Math.random()*bucket_list.length)];
+
+    const { payload } = generator.genPayload(false);
     let resp = s3_cli.put(bucket, key, payload)
     
     if (!resp.success) {

@@ -1,5 +1,5 @@
+import datagen from 'k6/x/neofs/datagen';
 import http from 'k6/http';
-import crypto from 'k6/crypto';
 import { SharedArray } from 'k6/data';
 import { sleep } from 'k6';
 
@@ -24,7 +24,7 @@ const [ write, duration ] = __ENV.PROFILE.split(':');
 let vus_read = Math.ceil(__ENV.CLIENTS/100*(100-parseInt(write)))
 let vus_write = __ENV.CLIENTS - vus_read
 
-const payload = crypto.randomBytes(1024*parseInt(__ENV.WRITE_OBJ_SIZE))
+const generator = datagen.generator(1024 * parseInt(__ENV.WRITE_OBJ_SIZE));
 
 let nodes = __ENV.NODES.split(',') // node1.neofs
 let rand_node = nodes[Math.floor(Math.random()*nodes.length)];
@@ -63,6 +63,7 @@ export const options = {
 };
 
 export function obj_write() {
+    const { payload } = generator.genPayload(false);
     let data = {
         field: uuidv4(),
         file: http.file(payload, "random.data"),
