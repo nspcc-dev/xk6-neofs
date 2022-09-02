@@ -3,6 +3,8 @@ package s3
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"strconv"
 	"time"
 
@@ -35,6 +37,11 @@ type (
 		Success bool
 		Error   string
 	}
+
+	VerifyHashResponse struct {
+		Success bool
+		Error   string
+	}
 )
 
 func (c *Client) Put(bucket, key string, payload goja.ArrayBuffer) PutResponse {
@@ -60,32 +67,65 @@ func (c *Client) Put(bucket, key string, payload goja.ArrayBuffer) PutResponse {
 }
 
 func (c *Client) Get(bucket, key string) GetResponse {
-	var (
-		buf = make([]byte, 4*1024)
-		sz  int
-	)
 	stats.Report(c.vu, objGetTotal, 1)
 	start := time.Now()
-	obj, err := c.cli.GetObject(context.Background(), &s3.GetObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
+
+	var objSize = 0
+	err := get(c.cli, bucket, key, func(chunk []byte) {
+		objSize += len(chunk)
 	})
 	if err != nil {
 		stats.Report(c.vu, objGetFails, 1)
 		return GetResponse{Success: false, Error: err.Error()}
 	}
+
 	stats.Report(c.vu, objGetDuration, metrics.D(time.Since(start)))
+	stats.ReportDataReceived(c.vu, float64(objSize))
+	return GetResponse{Success: true}
+}
+
+func get(
+	c *s3.Client,
+	bucket string,
+	key string,
+	onDataChunk func(chunk []byte),
+) error {
+	var buf = make([]byte, 4*1024)
+
+	obj, err := c.GetObject(context.Background(), &s3.GetObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return err
+	}
+
 	for {
 		n, err := obj.Body.Read(buf)
 		if n > 0 {
-			sz += n
+			onDataChunk(buf[:n])
 		}
 		if err != nil {
 			break
 		}
 	}
-	stats.ReportDataReceived(c.vu, float64(sz))
-	return GetResponse{Success: true}
+	return nil
+}
+
+func (c *Client) VerifyHash(bucket, key, expectedHash string) VerifyHashResponse {
+	hasher := sha256.New()
+	err := get(c.cli, bucket, key, func(data []byte) {
+		hasher.Write(data)
+	})
+	if err != nil {
+		return VerifyHashResponse{Success: false, Error: err.Error()}
+	}
+	actualHash := hex.EncodeToString(hasher.Sum(make([]byte, 0, sha256.Size)))
+	if actualHash != expectedHash {
+		return VerifyHashResponse{Success: true, Error: "hash mismatch"}
+	}
+
+	return VerifyHashResponse{Success: true}
 }
 
 func (c *Client) CreateBucket(bucket string, params map[string]string) CreateBucketResponse {

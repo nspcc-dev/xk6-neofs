@@ -31,7 +31,6 @@ var (
 
 func init() {
 	modules.Register("k6/x/neofs/s3", new(RootModule))
-
 }
 
 // NewModuleInstance implements the modules.Module interface and returns

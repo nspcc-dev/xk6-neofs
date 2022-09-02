@@ -6,6 +6,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -52,6 +53,11 @@ type (
 		Error   string
 	}
 
+	VerifyHashResponse struct {
+		Success bool
+		Error   string
+	}
+
 	PutContainerResponse struct {
 		Success     bool
 		ContainerID string
@@ -82,20 +88,16 @@ func (c *Client) SetBufferSize(size int) {
 	}
 }
 
-func (c *Client) Put(inputContainerID string, headers map[string]string, payload goja.ArrayBuffer) PutResponse {
-	var containerID cid.ID
-	err := containerID.DecodeString(inputContainerID)
-	if err != nil {
-		panic(err)
-	}
+func (c *Client) Put(containerID string, headers map[string]string, payload goja.ArrayBuffer) PutResponse {
+	cliContainerID := parseContainerID(containerID)
 
 	var addr address.Address
-	addr.SetContainerID(containerID)
+	addr.SetContainerID(cliContainerID)
 
 	tok := c.tok
 	tok.ForVerb(session.VerbObjectPut)
 	tok.ApplyTo(addr)
-	err = tok.Sign(c.key)
+	err := tok.Sign(c.key)
 	if err != nil {
 		panic(err)
 	}
@@ -112,7 +114,7 @@ func (c *Client) Put(inputContainerID string, headers map[string]string, payload
 	}
 
 	var o object.Object
-	o.SetContainerID(containerID)
+	o.SetContainerID(cliContainerID)
 	o.SetOwnerID(&owner)
 	o.SetAttributes(attrs...)
 
@@ -127,32 +129,18 @@ func (c *Client) Put(inputContainerID string, headers map[string]string, payload
 	return PutResponse{Success: true, ObjectID: id.String()}
 }
 
-func (c *Client) Get(inputContainerID, inputObjectID string) GetResponse {
-	var (
-		buf = make([]byte, c.bufsize)
-		sz  int
-	)
-
-	var containerID cid.ID
-	err := containerID.DecodeString(inputContainerID)
-	if err != nil {
-		panic(err)
-	}
-
-	var objectID oid.ID
-	err = objectID.DecodeString(inputObjectID)
-	if err != nil {
-		panic(err)
-	}
+func (c *Client) Get(containerID, objectID string) GetResponse {
+	cliContainerID := parseContainerID(containerID)
+	cliObjectID := parseObjectID(objectID)
 
 	var addr address.Address
-	addr.SetContainerID(containerID)
-	addr.SetObjectID(objectID)
+	addr.SetContainerID(cliContainerID)
+	addr.SetObjectID(cliObjectID)
 
 	tok := c.tok
 	tok.ForVerb(session.VerbObjectGet)
 	tok.ApplyTo(addr)
-	err = tok.Sign(c.key)
+	err := tok.Sign(c.key)
 	if err != nil {
 		panic(err)
 	}
@@ -160,42 +148,95 @@ func (c *Client) Get(inputContainerID, inputObjectID string) GetResponse {
 	stats.Report(c.vu, objGetTotal, 1)
 	start := time.Now()
 
-	var prmObjectGetInit client.PrmObjectGet
-	prmObjectGetInit.ByID(objectID)
-	prmObjectGetInit.FromContainer(containerID)
-	prmObjectGetInit.WithinSession(tok)
+	var prm client.PrmObjectGet
+	prm.ByID(cliObjectID)
+	prm.FromContainer(cliContainerID)
+	prm.WithinSession(tok)
 
-	objectReader, err := c.cli.ObjectGetInit(c.vu.Context(), prmObjectGetInit)
-	if err != nil {
-		stats.Report(c.vu, objGetFails, 1)
-		return GetResponse{Success: false, Error: err.Error()}
-	}
-
-	var o object.Object
-	if !objectReader.ReadHeader(&o) {
-		stats.Report(c.vu, objGetFails, 1)
-		var errorStr string
-		if _, err = objectReader.Close(); err != nil {
-			errorStr = err.Error()
-		}
-		return GetResponse{Success: false, Error: errorStr}
-	}
-
-	n, _ := objectReader.Read(buf)
-	for n > 0 {
-		sz += n
-		n, _ = objectReader.Read(buf)
-	}
-
-	_, err = objectReader.Close()
+	var objSize = 0
+	err = get(c.cli, prm, c.vu.Context(), c.bufsize, func(data []byte) {
+		objSize += len(data)
+	})
 	if err != nil {
 		stats.Report(c.vu, objGetFails, 1)
 		return GetResponse{Success: false, Error: err.Error()}
 	}
 
 	stats.Report(c.vu, objGetDuration, metrics.D(time.Since(start)))
-	stats.ReportDataReceived(c.vu, float64(sz))
+	stats.ReportDataReceived(c.vu, float64(objSize))
 	return GetResponse{Success: true}
+}
+
+func get(
+	cli *client.Client,
+	prm client.PrmObjectGet,
+	ctx context.Context,
+	bufSize int,
+	onDataChunk func(chunk []byte),
+) error {
+	var buf = make([]byte, bufSize)
+
+	objectReader, err := cli.ObjectGetInit(ctx, prm)
+	if err != nil {
+		return err
+	}
+
+	var o object.Object
+	if !objectReader.ReadHeader(&o) {
+		if _, err = objectReader.Close(); err != nil {
+			return err
+		}
+		return errors.New("can't read object header")
+	}
+
+	n, _ := objectReader.Read(buf)
+	for n > 0 {
+		onDataChunk(buf[:n])
+		n, _ = objectReader.Read(buf)
+	}
+
+	_, err = objectReader.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHashResponse {
+	cliContainerID := parseContainerID(containerID)
+	cliObjectID := parseObjectID(objectID)
+
+	var addr address.Address
+	addr.SetContainerID(cliContainerID)
+	addr.SetObjectID(cliObjectID)
+
+	tok := c.tok
+	tok.ForVerb(session.VerbObjectGet)
+	tok.ApplyTo(addr)
+	err := tok.Sign(c.key)
+	if err != nil {
+		panic(err)
+	}
+
+	var prm client.PrmObjectGet
+	prm.ByID(cliObjectID)
+	prm.FromContainer(cliContainerID)
+	prm.WithinSession(tok)
+
+	hasher := sha256.New()
+	err = get(c.cli, prm, c.vu.Context(), c.bufsize, func(data []byte) {
+		hasher.Write(data)
+	})
+	if err != nil {
+		return VerifyHashResponse{Success: false, Error: err.Error()}
+	}
+	actualHash := hex.EncodeToString(hasher.Sum(make([]byte, 0, sha256.Size)))
+	if actualHash != expectedHash {
+		return VerifyHashResponse{Success: true, Error: "hash mismatch"}
+	}
+
+	return VerifyHashResponse{Success: true}
 }
 
 func (c *Client) putCnrErrorResponse(err error) PutContainerResponse {
@@ -270,7 +311,7 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 	return PutContainerResponse{Success: true, ContainerID: res.ID().EncodeToString()}
 }
 
-func (c *Client) Onsite(inputContainerID string, payload goja.ArrayBuffer) PreparedObject {
+func (c *Client) Onsite(containerID string, payload goja.ArrayBuffer) PreparedObject {
 	maxObjectSize, epoch, hhDisabled, err := parseNetworkInfo(c.vu.Context(), c.cli)
 	if err != nil {
 		panic(err)
@@ -286,11 +327,7 @@ func (c *Client) Onsite(inputContainerID string, payload goja.ArrayBuffer) Prepa
 		panic(msg)
 	}
 
-	var containerID cid.ID
-	err = containerID.DecodeString(inputContainerID)
-	if err != nil {
-		panic(err)
-	}
+	cliContainerID := parseContainerID(containerID)
 
 	var owner user.ID
 	user.IDFromKey(&owner, c.key.PublicKey)
@@ -300,7 +337,7 @@ func (c *Client) Onsite(inputContainerID string, payload goja.ArrayBuffer) Prepa
 	obj := object.New()
 	obj.SetVersion(&apiVersion)
 	obj.SetType(object.TypeRegular)
-	obj.SetContainerID(containerID)
+	obj.SetContainerID(cliContainerID)
 	obj.SetOwnerID(&owner)
 	obj.SetPayloadSize(uint64(ln))
 	obj.SetCreationEpoch(epoch)
@@ -470,4 +507,22 @@ func waitFor(ctx context.Context, params *waitParams, condition func(context.Con
 			ticker.Reset(params.pollInterval)
 		}
 	}
+}
+
+func parseContainerID(strContainerID string) cid.ID {
+	var containerID cid.ID
+	err := containerID.DecodeString(strContainerID)
+	if err != nil {
+		panic(err)
+	}
+	return containerID
+}
+
+func parseObjectID(strObjectID string) oid.ID {
+	var cliObjectID oid.ID
+	err := cliObjectID.DecodeString(strObjectID)
+	if err != nil {
+		panic(err)
+	}
+	return cliObjectID
 }
