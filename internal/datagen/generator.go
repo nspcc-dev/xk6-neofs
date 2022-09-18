@@ -40,6 +40,9 @@ func init() {
 }
 
 func NewGenerator(vu modules.VU, size int) Generator {
+	if size <= 0 {
+		panic("size should be positive")
+	}
 	return Generator{vu: vu, size: size, buf: nil, offset: 0}
 }
 

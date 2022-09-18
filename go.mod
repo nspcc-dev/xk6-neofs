@@ -11,6 +11,7 @@ require (
 	github.com/nspcc-dev/neo-go v0.98.2
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.3.0.20220504192402-12ea1e8d740f
 	github.com/nspcc-dev/tzhash v1.5.2
+	github.com/stretchr/testify v1.7.1
 	go.k6.io/k6 v0.38.2
 )
 
@@ -31,6 +32,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.16.4 // indirect
 	github.com/aws/smithy-go v1.11.2 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.4.1-0.20201116162257-a2a8dda75c91 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4-0.20211119122758-180fcef48034+incompatible // indirect
@@ -47,6 +49,7 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/serenize/snaker v0.0.0-20201027110005-a7ad2135616e // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
@@ -61,4 +64,5 @@ require (
 	google.golang.org/grpc v1.45.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/guregu/null.v3 v3.3.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
