@@ -13,7 +13,6 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-20.04
-
     steps:
       - name: Check out code
         uses: actions/checkout@v2
@@ -22,3 +21,13 @@ jobs:
         uses: golangci/golangci-lint-action@v2
         with:
           version: latest
+
+  tests:
+    name: Tests
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        go_versions: [ '1.17', '1.18', '1.19' ]
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v3
