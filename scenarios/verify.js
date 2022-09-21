@@ -5,8 +5,11 @@ import { sleep } from 'k6';
 import exec from 'k6/execution';
 
 /*
-   ./k6 run -e CLIENTS=200 -e TIME_LIMIT=30 -e GRPC_ENDPOINTS=node4.data:8084 scenarios/verify.js
+  ./k6 run -e CLIENTS=200 -e TIME_LIMIT=30 -e GRPC_ENDPOINTS=node4.data:8084 
+    -e REGISTRY_FILE=registry.bolt scenarios/verify.js
 */
+
+const obj_registry = registry.open(__ENV.REGISTRY_FILE);
 
 // Time limit (in seconds) for the run
 const time_limit = __ENV.TIME_LIMIT || "60";
@@ -47,7 +50,7 @@ export function obj_verify() {
         sleep(__ENV.SLEEP);
     }
 
-    const obj = registry.nextObjectToVerify();
+    const obj = obj_registry.nextObjectToVerify();
     if (!obj) {
         // TODO: consider using a metric with abort condition to stop execution when
         // all VUs have no objects to verify. Alternative solution could be a
@@ -67,13 +70,13 @@ export function obj_verify() {
         result = s3_client.verifyHash(obj.s3_bucket, obj.s3_key, obj.payload_hash);
     } else {
         console.log(`Object id=${obj.id} cannot be verified with supported protocols`);
-        registry.setObjectStatus(obj.id, "skipped");
+        obj_registry.setObjectStatus(obj.id, "skipped");
     }
 
     if (result.success) {
-        registry.setObjectStatus(obj.id, "verified");
+        obj_registry.setObjectStatus(obj.id, "verified");
     } else {
-        registry.setObjectStatus(obj.id, "invalid");
+        obj_registry.setObjectStatus(obj.id, "invalid");
         console.log(`Verify error on ${obj.c_id}/${obj.o_id}: {resp.error}`);
     }
 }

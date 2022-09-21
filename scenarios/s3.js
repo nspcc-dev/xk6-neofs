@@ -1,6 +1,6 @@
 import datagen from 'k6/x/neofs/datagen';
-import s3 from 'k6/x/neofs/s3';
 import registry from 'k6/x/neofs/registry';
+import s3 from 'k6/x/neofs/s3';
 import { SharedArray } from 'k6/data';
 import { sleep } from 'k6';
 
@@ -20,7 +20,7 @@ const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
       scenarios/s3.js
 
     OBJ_NAME - if specified, this name will be used for all write operations instead of random generation.
-    REGISTRY - if set to "enabled", all produced objects will be stored in database for subsequent verification.
+    REGISTRY_FILE - if set, all produced objects will be stored in database for subsequent verification.
 */
 
 // Parse profile from env
@@ -35,7 +35,9 @@ const s3_endpoints = __ENV.S3_ENDPOINTS.split(',');
 const s3_endpoint = s3_endpoints[Math.floor(Math.random() * s3_endpoints.length)];
 const s3_client = s3.connect(`http://${s3_endpoint}`);
 
-const registry_enabled = (__ENV.REGISTRY || "").toLowerCase() == "enabled"
+const registry_enabled = !!__ENV.REGISTRY_FILE;
+const obj_registry = registry_enabled ? registry.open(__ENV.REGISTRY_FILE) : undefined;
+
 const generator = datagen.generator(1024 * parseInt(__ENV.WRITE_OBJ_SIZE));
 
 const scenarios = {};
@@ -66,6 +68,12 @@ export function setup() {
     console.log("Pregenerated total objects: " + obj_list.length);
 }
 
+export function teardown(data) {
+    if (obj_registry) {
+        obj_registry.close();
+    }
+}
+
 export const options = {
     scenarios,
     setupTimeout: '5s',
@@ -86,8 +94,8 @@ export function obj_write() {
         return;
     }
 
-    if (registry_enabled) {
-        registry.addObject("", "", bucket, key, hash);
+    if (obj_registry) {
+        obj_registry.addObject("", "", bucket, key, hash);
     }
 }
 

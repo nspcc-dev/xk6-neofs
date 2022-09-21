@@ -21,11 +21,11 @@ $ ./k6 run -e PROFILE=50:60 -e WRITE_OBJ_SIZE=8192 -e CLIENTS=400 -e GRPC_ENDPOI
 Options:
   * PROFILE - format write:duration
       * write    - percent of VUs performing write operations (the rest will be read VUs)
-      * duration - time in sec
+      * duration - time in seconds
   * CLIENTS - number of VUs for all operations
   * WRITE_OBJ_SIZE - object size in kb for write(PUT) operations
   * PREGEN_JSON - path to json file with pre-generated containers and objects
-  * REGISTRY - if set to "enabled", all produced objects will be stored in database for subsequent verification.
+  * REGISTRY_FILE - if set, all produced objects will be stored in database for subsequent verification. Database file name will be set to value of REGISTRY_FILE.
 
 ## S3
 
@@ -64,12 +64,12 @@ Options are identical to gRPC scenario, plus:
 
 ## Verify
 
-This scenario allows to verify that objects created by a previous run are really stored in the system and their data is not corrupted. Running this scenario assumes that you've already run gRPC and/or S3 scenario with option `REGISTRY=enabled`.
+This scenario allows to verify that objects created by a previous run are really stored in the system and their data is not corrupted. Running this scenario assumes that you've already run gRPC and/or S3 scenario with option `REGISTRY_FILE`.
 
 To verify stored objects execute scenario with options:
 
 ```
-./k6 run -e CLIENTS=200 -e TIME_LIMIT=120 -e GRPC_ENDPOINTS=node1.data:8080,node2.data:8080 -e S3_ENDPOINTS=node1.data:8084,node2.data:8084 scenarios/verify.js
+./k6 run -e CLIENTS=200 -e TIME_LIMIT=120 -e GRPC_ENDPOINTS=node1.data:8080,node2.data:8080 -e S3_ENDPOINTS=node1.data:8084,node2.data:8084 -e REGISTRY_FILE=registry.bolt scenarios/verify.js
 ```
 
 Scenario picks up all objects in `created` status. If object is stored correctly, its' status will be changed into `verified`. If object does not exist or its' data is corrupted, then the status will be changed into `invalid`.
@@ -78,3 +78,4 @@ Scenario ends as soon as all objects are checked (return code will be [108](http
 Options:
   * CLIENTS - number of VUs for verifying objects (VU can handle both GRPC and S3 objects)
   * TIME_LIMIT - amount of time in seconds that is sufficient to verify all objects. If this time interval ends, then verification process will be interrupted and objects that have not been checked will stay in the `created` state.
+  * REGISTRY_FILE - database file from which objects for verification should be read.
