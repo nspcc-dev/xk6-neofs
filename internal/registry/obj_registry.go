@@ -104,6 +104,32 @@ func (o *ObjRegistry) SetObjectStatus(id uint64, newStatus string) error {
 	})
 }
 
+func (o *ObjRegistry) GetObjectCountInStatus(status string) (int, error) {
+	var objCount = 0
+	err := o.boltDB.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(bucketName))
+		if b == nil {
+			return nil
+		}
+
+		c := b.Cursor()
+		for keyBytes, objBytes := c.First(); keyBytes != nil; keyBytes, objBytes = c.Next() {
+			if objBytes != nil {
+				var obj ObjectInfo
+				if err := json.Unmarshal(objBytes, &obj); err != nil {
+					// Ignore malformed objects
+					continue
+				}
+				if obj.Status == status {
+					objCount++
+				}
+			}
+		}
+		return nil
+	})
+	return objCount, err
+}
+
 func (o *ObjRegistry) NextObjectToVerify() (*ObjectInfo, error) {
 	return o.objSelector.NextObject()
 }
