@@ -20,7 +20,7 @@ const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
       -e PREGEN_JSON=test.json \
       scenarios/grpc.js
 
-    REGISTRY - if set to "enabled", all produced objects will be stored in database for subsequent verification.
+    REGISTRY_FILE - if set, all produced objects will be stored in database for subsequent verification.
 */
 
 // Parse profile from env (format is write:duration)
@@ -37,7 +37,9 @@ const grpc_endpoints = __ENV.GRPC_ENDPOINTS.split(',');
 const grpc_endpoint = grpc_endpoints[Math.floor(Math.random() * grpc_endpoints.length)];
 const grpc_client = native.connect(grpc_endpoint, '');
 
-const registry_enabled = (__ENV.REGISTRY || "").toLowerCase() == "enabled"
+const registry_enabled = !!__ENV.REGISTRY_FILE;
+const obj_registry = registry_enabled ? registry.open(__ENV.REGISTRY_FILE) : undefined;
+
 const generator = datagen.generator(1024 * parseInt(__ENV.WRITE_OBJ_SIZE));
 
 const scenarios = {};
@@ -68,6 +70,12 @@ export function setup() {
     console.log("Pregenerated total objects: " + obj_list.length);
 }
 
+export function teardown(data) {
+    if (obj_registry) {
+        obj_registry.close();
+    }
+}
+
 export const options = {
     scenarios,
     setupTimeout: '5s',
@@ -84,14 +92,14 @@ export function obj_write() {
     const container = container_list[Math.floor(Math.random() * container_list.length)];
 
     const { payload, hash } = generator.genPayload(registry_enabled);
-    let resp = grpc_client.put(container, headers, payload);
+    const resp = grpc_client.put(container, headers, payload);
     if (!resp.success) {
         console.log(resp.error);
         return;
     }
 
-    if (registry_enabled) {
-        registry.addObject(container, resp.object_id, "", "", hash);
+    if (obj_registry) {
+        obj_registry.addObject(container, resp.object_id, "", "", hash);
     }
 }
 
@@ -100,8 +108,8 @@ export function obj_read() {
         sleep(__ENV.SLEEP);
     }
 
-    let obj = obj_list[Math.floor(Math.random() * obj_list.length)];
-    let resp = grpc_client.get(obj.container, obj.object)
+    const obj = obj_list[Math.floor(Math.random() * obj_list.length)];
+    const resp = grpc_client.get(obj.container, obj.object)
     if (!resp.success) {
         console.log(resp.error);
     }
