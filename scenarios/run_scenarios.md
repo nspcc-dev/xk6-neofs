@@ -26,6 +26,7 @@ Options:
   * WRITE_OBJ_SIZE - object size in kb for write(PUT) operations
   * PREGEN_JSON - path to json file with pre-generated containers and objects
   * REGISTRY_FILE - if set, all produced objects will be stored in database for subsequent verification. Database file name will be set to value of REGISTRY_FILE.
+  * SLEEP - time interval (in seconds) between VU iterations.
 
 ## S3
 
@@ -73,9 +74,10 @@ To verify stored objects execute scenario with options:
 ```
 
 Scenario picks up all objects in `created` status. If object is stored correctly, its' status will be changed into `verified`. If object does not exist or its' data is corrupted, then the status will be changed into `invalid`.
-Scenario ends as soon as all objects are checked (return code will be [108](https://k6.io/docs/javascript-api/k6-execution/#test)).
+Scenario ends as soon as all objects are checked or time limit is exceeded.
 
 Options:
   * CLIENTS - number of VUs for verifying objects (VU can handle both GRPC and S3 objects)
   * TIME_LIMIT - amount of time in seconds that is sufficient to verify all objects. If this time interval ends, then verification process will be interrupted and objects that have not been checked will stay in the `created` state.
   * REGISTRY_FILE - database file from which objects for verification should be read.
+  * SLEEP - time interval (in seconds) between VU iterations.
