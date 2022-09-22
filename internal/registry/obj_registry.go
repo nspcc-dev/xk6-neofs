@@ -3,6 +3,7 @@ package registry
 import (
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"os"
 	"time"
 
@@ -15,7 +16,7 @@ type ObjRegistry struct {
 }
 
 const (
-	// Indicates that an object was created, but its data wasn't verified yet
+	// Indicates that an object was created, but its data wasn't verified yet.
 	statusCreated = "created"
 )
 
@@ -87,7 +88,7 @@ func (o *ObjRegistry) SetObjectStatus(id uint64, newStatus string) error {
 
 		objBytes := b.Get(encodeId(id))
 		if objBytes == nil {
-			return nil
+			return errors.New("object doesn't exist")
 		}
 
 		obj := new(ObjectInfo)
@@ -112,20 +113,19 @@ func (o *ObjRegistry) GetObjectCountInStatus(status string) (int, error) {
 			return nil
 		}
 
-		c := b.Cursor()
-		for keyBytes, objBytes := c.First(); keyBytes != nil; keyBytes, objBytes = c.Next() {
+		return b.ForEach(func(_, objBytes []byte) error {
 			if objBytes != nil {
 				var obj ObjectInfo
 				if err := json.Unmarshal(objBytes, &obj); err != nil {
 					// Ignore malformed objects
-					continue
+					return nil
 				}
 				if obj.Status == status {
 					objCount++
 				}
 			}
-		}
-		return nil
+			return nil
+		})
 	})
 	return objCount, err
 }
