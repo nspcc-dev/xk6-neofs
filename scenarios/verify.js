@@ -39,11 +39,16 @@ if (__ENV.S3_ENDPOINTS) {
 // We will attempt to verify every object in "created" status. The scenario will execute
 // as many scenarios as there are objects. Each object will have 3 retries to be verified
 const obj_count_to_verify = obj_registry.getObjectCountInStatus("created");
+// Execute at least one iteration (shared-iterations can't run 0 iterations)
+const iterations = Math.max(1, obj_count_to_verify);
+// Executor shared-iterations requires number of iterations to be larger than number of VUs
+const vus = Math.min(__ENV.CLIENTS, iterations);
+
 const scenarios = {
     verify: {
         executor: 'shared-iterations',
-        vus: __ENV.CLIENTS,
-        iterations: obj_count_to_verify,
+        vus,
+        iterations,
         maxDuration: `${time_limit}s`,
         exec: 'obj_verify',
         gracefulStop: '5s',
@@ -51,7 +56,7 @@ const scenarios = {
 };
 
 export const options = {
-    scenarios: scenarios,
+    scenarios,
     setupTimeout: '5s',
 };
 

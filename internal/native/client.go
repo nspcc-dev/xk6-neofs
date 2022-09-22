@@ -231,7 +231,7 @@ func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHa
 	if err != nil {
 		return VerifyHashResponse{Success: false, Error: err.Error()}
 	}
-	actualHash := hex.EncodeToString(hasher.Sum(make([]byte, 0, sha256.Size)))
+	actualHash := hex.EncodeToString(hasher.Sum(nil))
 	if actualHash != expectedHash {
 		return VerifyHashResponse{Success: true, Error: "hash mismatch"}
 	}

@@ -49,7 +49,7 @@ func (r *Registry) Exports() modules.Exports {
 // Open creates a new instance of object registry that will store information about objects
 // in the specified file. If repository instance for the file was previously created, then
 // Open will return the existing instance of repository, because bolt database allows only
-// one write connection at a time
+// one write connection at a time.
 func (r *Registry) Open(dbFilePath string) *ObjRegistry {
 	r.root.mu.Lock()
 	defer r.root.mu.Unlock()

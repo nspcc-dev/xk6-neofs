@@ -2,6 +2,7 @@ package registry
 
 import (
 	"encoding/json"
+	"errors"
 	"sync"
 
 	"go.etcd.io/bbolt"
@@ -59,14 +60,10 @@ func (o *ObjSelector) NextObject() (*ObjectInfo, error) {
 		// Update the last key
 		if keyBytes != nil {
 			o.lastId = decodeId(keyBytes)
-		} else {
-			// Loopback to beginning so that we can revisit objects which were taken for verification
-			// but their status wasn't changed
-			// TODO: stop looping back to beginning too quickly
-			o.lastId = 0
+			return nil
 		}
 
-		return nil
+		return errors.New("no objects are available")
 	})
 	return foundObj, err
 }
