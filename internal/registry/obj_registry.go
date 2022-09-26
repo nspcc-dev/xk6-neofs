@@ -11,8 +11,7 @@ import (
 )
 
 type ObjRegistry struct {
-	boltDB      *bbolt.DB
-	objSelector *ObjSelector
+	boltDB *bbolt.DB
 }
 
 const (
@@ -25,17 +24,20 @@ const bucketName = "_object"
 // ObjectInfo represents information about neoFS object that has been created
 // via gRPC/HTTP/S3 API.
 type ObjectInfo struct {
-	Id          uint64 // Identifier in bolt DB
-	CID         string // Container ID in gRPC/HTTP
-	OID         string // Object ID in gRPC/HTTP
-	S3Bucket    string // Bucket name in S3
-	S3Key       string // Object key in S3
-	Status      string // Status of the object
-	PayloadHash string // SHA256 hash of object payload that can be used for verification
+	Id          uint64    // Identifier in bolt DB
+	CreatedAt   time.Time // UTC date&time when the object was created
+	CID         string    // Container ID in gRPC/HTTP
+	OID         string    // Object ID in gRPC/HTTP
+	S3Bucket    string    // Bucket name in S3
+	S3Key       string    // Object key in S3
+	Status      string    // Status of the object
+	PayloadHash string    // SHA256 hash of object payload that can be used for verification
 }
 
-// NewModuleInstance implements the modules.Module interface and returns
-// a new instance for each VU.
+// NewObjRegistry creates a new instance of object registry that stores information
+// about objects in the specified bolt database. As registry uses read-write
+// connection to the database, there may be only one instance of object registry
+// per database file at a time.
 func NewObjRegistry(dbFilePath string) *ObjRegistry {
 	options := bbolt.Options{Timeout: 100 * time.Millisecond}
 	boltDB, err := bbolt.Open(dbFilePath, os.ModePerm, &options)
@@ -43,9 +45,7 @@ func NewObjRegistry(dbFilePath string) *ObjRegistry {
 		panic(err)
 	}
 
-	objSelector := ObjSelector{boltDB: boltDB, objStatus: statusCreated}
-
-	objRepository := &ObjRegistry{boltDB: boltDB, objSelector: &objSelector}
+	objRepository := &ObjRegistry{boltDB: boltDB}
 	return objRepository
 }
 
@@ -63,6 +63,7 @@ func (o *ObjRegistry) AddObject(cid, oid, s3Bucket, s3Key, payloadHash string) e
 
 		object := ObjectInfo{
 			Id:          id,
+			CreatedAt:   time.Now().UTC(),
 			CID:         cid,
 			OID:         oid,
 			S3Bucket:    s3Bucket,
@@ -103,35 +104,6 @@ func (o *ObjRegistry) SetObjectStatus(id uint64, newStatus string) error {
 		}
 		return b.Put(encodeId(id), objBytes)
 	})
-}
-
-func (o *ObjRegistry) GetObjectCountInStatus(status string) (int, error) {
-	var objCount = 0
-	err := o.boltDB.View(func(tx *bbolt.Tx) error {
-		b := tx.Bucket([]byte(bucketName))
-		if b == nil {
-			return nil
-		}
-
-		return b.ForEach(func(_, objBytes []byte) error {
-			if objBytes != nil {
-				var obj ObjectInfo
-				if err := json.Unmarshal(objBytes, &obj); err != nil {
-					// Ignore malformed objects
-					return nil
-				}
-				if obj.Status == status {
-					objCount++
-				}
-			}
-			return nil
-		})
-	})
-	return objCount, err
-}
-
-func (o *ObjRegistry) NextObjectToVerify() (*ObjectInfo, error) {
-	return o.objSelector.NextObject()
 }
 
 func (o *ObjRegistry) Close() error {
