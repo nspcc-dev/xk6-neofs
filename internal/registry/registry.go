@@ -1,6 +1,9 @@
 package registry
 
 import (
+	"fmt"
+	"reflect"
+	"strconv"
 	"sync"
 
 	"go.k6.io/k6/js/modules"
@@ -12,7 +15,9 @@ type RootModule struct {
 	// Stores object registry by path of database file. We should have only single instance
 	// of registry per each file
 	registries map[string]*ObjRegistry
-	// Mutex to sync access to repositories map
+	// Stores object selector by name. We may have multiple selectors per database file
+	selectors map[string]*ObjSelector
+	// Mutex to sync access to the maps
 	mu sync.Mutex
 }
 
@@ -29,7 +34,10 @@ var (
 )
 
 func init() {
-	rootModule := &RootModule{registries: make(map[string]*ObjRegistry)}
+	rootModule := &RootModule{
+		registries: make(map[string]*ObjRegistry),
+		selectors:  make(map[string]*ObjSelector),
+	}
 	modules.Register("k6/x/neofs/registry", rootModule)
 }
 
@@ -53,11 +61,50 @@ func (r *Registry) Exports() modules.Exports {
 func (r *Registry) Open(dbFilePath string) *ObjRegistry {
 	r.root.mu.Lock()
 	defer r.root.mu.Unlock()
+	return r.open(dbFilePath)
+}
 
+// Implementation of Open without mutex lock, so that it can be re-used in other methods.
+func (r *Registry) open(dbFilePath string) *ObjRegistry {
 	registry := r.root.registries[dbFilePath]
 	if registry == nil {
 		registry = NewObjRegistry(dbFilePath)
 		r.root.registries[dbFilePath] = registry
 	}
 	return registry
+}
+
+func (r *Registry) GetSelector(dbFilePath string, name string, filter map[string]string) *ObjSelector {
+	objFilter, err := parseFilter(filter)
+	if err != nil {
+		panic(err)
+	}
+
+	r.root.mu.Lock()
+	defer r.root.mu.Unlock()
+
+	selector := r.root.selectors[name]
+	if selector == nil {
+		registry := r.open(dbFilePath)
+		selector = NewObjSelector(registry, objFilter)
+		r.root.selectors[name] = selector
+	} else if !reflect.DeepEqual(selector.filter, objFilter) {
+		panic(fmt.Sprintf("selector %s already has been created with a different filter", name))
+	}
+	return selector
+}
+
+func parseFilter(filter map[string]string) (*ObjFilter, error) {
+	objFilter := ObjFilter{}
+	objFilter.Status = filter["status"]
+
+	if ageStr := filter["age"]; ageStr != "" {
+		age, err := strconv.ParseInt(ageStr, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		objFilter.Age = int(age)
+	}
+
+	return &objFilter, nil
 }

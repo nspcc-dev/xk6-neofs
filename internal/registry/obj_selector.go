@@ -2,19 +2,34 @@ package registry
 
 import (
 	"encoding/json"
-	"errors"
 	"sync"
+	"time"
 
 	"go.etcd.io/bbolt"
 )
 
-type ObjSelector struct {
-	boltDB    *bbolt.DB
-	mu        sync.Mutex
-	lastId    uint64
-	objStatus string
+type ObjFilter struct {
+	Status string
+	Age    int
 }
 
+type ObjSelector struct {
+	boltDB *bbolt.DB
+	filter *ObjFilter
+	mu     sync.Mutex
+	lastId uint64
+}
+
+// NewObjSelector creates a new instance of object selector that can iterate over
+// objects in the specified registry.
+func NewObjSelector(registry *ObjRegistry, filter *ObjFilter) *ObjSelector {
+	objSelector := &ObjSelector{boltDB: registry.boltDB, filter: filter}
+	return objSelector
+}
+
+// NextObject returns the next object from the registry that matches filter of
+// the selector. NextObject only roams forward from the current position of the
+// selector. If there are no objects that match the filter, then returns nil.
 func (o *ObjSelector) NextObject() (*ObjectInfo, error) {
 	var foundObj *ObjectInfo
 	err := o.boltDB.View(func(tx *bbolt.Tx) error {
@@ -41,7 +56,7 @@ func (o *ObjSelector) NextObject() (*ObjectInfo, error) {
 			keyBytes, objBytes = c.Next()
 		}
 
-		// Iterate over objects to find the next object in the target status
+		// Iterate over objects to find the next object matching the filter
 		var obj ObjectInfo
 		for ; keyBytes != nil; keyBytes, objBytes = c.Next() {
 			if objBytes != nil {
@@ -49,8 +64,8 @@ func (o *ObjSelector) NextObject() (*ObjectInfo, error) {
 					// Ignore malformed objects for now. Maybe it should be panic?
 					continue
 				}
-				// If we reached an object in the target status, stop iterating
-				if obj.Status == o.objStatus {
+				// If we reached an object that matches filter, stop iterating
+				if o.filter.match(obj) {
 					foundObj = &obj
 					break
 				}
@@ -63,7 +78,54 @@ func (o *ObjSelector) NextObject() (*ObjectInfo, error) {
 			return nil
 		}
 
-		return errors.New("no objects are available")
+		return nil
 	})
 	return foundObj, err
+}
+
+// Resets object selector to start scanning objects from the beginning.
+func (o *ObjSelector) Reset() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	o.lastId = 0
+}
+
+// Count returns total number of objects that match filter of the selector.
+func (o *ObjSelector) Count() (int, error) {
+	var count = 0
+	err := o.boltDB.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte(bucketName))
+		if b == nil {
+			return nil
+		}
+
+		return b.ForEach(func(_, objBytes []byte) error {
+			if objBytes != nil {
+				var obj ObjectInfo
+				if err := json.Unmarshal(objBytes, &obj); err != nil {
+					// Ignore malformed objects
+					return nil
+				}
+				if o.filter.match(obj) {
+					count++
+				}
+			}
+			return nil
+		})
+	})
+	return count, err
+}
+
+func (f *ObjFilter) match(o ObjectInfo) bool {
+	if f.Status != "" && f.Status != o.Status {
+		return false
+	}
+	if f.Age != 0 {
+		objAge := time.Now().UTC().Sub(o.CreatedAt).Seconds()
+		if objAge < float64(f.Age) {
+			return false
+		}
+	}
+	return true
 }

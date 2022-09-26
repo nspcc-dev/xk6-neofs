@@ -37,10 +37,17 @@ if (__ENV.S3_ENDPOINTS) {
 }
 
 // We will attempt to verify every object in "created" status. The scenario will execute
-// as many scenarios as there are objects. Each object will have 3 retries to be verified
-const obj_count_to_verify = obj_registry.getObjectCountInStatus("created");
-// Execute at least one iteration (shared-iterations can't run 0 iterations)
-const iterations = Math.max(1, obj_count_to_verify);
+// as many iterations as there are objects. Each object will have 3 retries to be verified
+const obj_to_verify_selector = registry.getSelector(
+    __ENV.REGISTRY_FILE,
+    "obj_to_verify",
+    {
+        status: "created",
+    }
+);
+const obj_to_verify_count = obj_to_verify_selector.count();
+// Execute at least one iteration (executor shared-iterations can't run 0 iterations)
+const iterations = Math.max(1, obj_to_verify_count);
 // Executor shared-iterations requires number of iterations to be larger than number of VUs
 const vus = Math.min(__ENV.CLIENTS, iterations);
 
@@ -63,7 +70,8 @@ export const options = {
 export function setup() {
     // Populate counters with initial values
     for (const [status, counter] of Object.entries(obj_counters)) {
-        counter.add(obj_registry.getObjectCountInStatus(status));
+        const obj_selector = registry.getSelector(__ENV.REGISTRY_FILE, status, { status });
+        counter.add(obj_selector.count());
     }
 }
 
@@ -72,7 +80,7 @@ export function obj_verify() {
         sleep(__ENV.SLEEP);
     }
 
-    const obj = obj_registry.nextObjectToVerify();
+    const obj = obj_to_verify_selector.nextObject();
     if (!obj) {
         console.log("All objects have been verified");
         return;
@@ -103,7 +111,7 @@ function verify_object_with_retries(obj, attempts) {
         }
 
         // Unless we explicitly saw that there was a hash mismatch, then we will retry after a delay
-        console.log(`Verify error on ${obj.id}: {resp.error}. Object will be re-tried`);
+        console.log(`Verify error on ${obj.id}: ${result.error}. Object will be re-tried`);
         sleep(__ENV.SLEEP);
     }
 
