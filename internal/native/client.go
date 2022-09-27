@@ -48,6 +48,11 @@ type (
 		Error    string
 	}
 
+	DeleteResponse struct {
+		Success bool
+		Error   string
+	}
+
 	GetResponse struct {
 		Success bool
 		Error   string
@@ -127,6 +132,35 @@ func (c *Client) Put(containerID string, headers map[string]string, payload goja
 	resp.ReadStoredObjectID(&id)
 
 	return PutResponse{Success: true, ObjectID: id.String()}
+}
+
+func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
+	cliContainerID := parseContainerID(containerID)
+	cliObjectID := parseObjectID(objectID)
+
+	var addr address.Address
+	addr.SetContainerID(cliContainerID)
+	addr.SetObjectID(cliObjectID)
+
+	tok := c.tok
+	tok.ForVerb(session.VerbObjectDelete)
+	tok.ApplyTo(addr)
+	err := tok.Sign(c.key)
+	if err != nil {
+		panic(err)
+	}
+
+	var prm client.PrmObjectDelete
+	prm.ByID(cliObjectID)
+	prm.FromContainer(cliContainerID)
+	prm.WithinSession(tok)
+
+	_, err = c.cli.ObjectDelete(c.vu.Context(), prm)
+	if err != nil {
+		return DeleteResponse{Success: false, Error: err.Error()}
+	}
+
+	return DeleteResponse{Success: true}
 }
 
 func (c *Client) Get(containerID, objectID string) GetResponse {

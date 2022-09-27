@@ -14,24 +14,6 @@ const container_list = new SharedArray('container_list', function () {
 
 const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 
-/* 
-    ./k6 run -e PROFILE=0:60 -e CLIENTS=200 -e WRITE_OBJ_SIZE=1024 \
-      -e GRPC_ENDPOINTS=host1:8080,host2:8080 \
-      -e PREGEN_JSON=test.json \
-      scenarios/grpc.js
-
-    REGISTRY_FILE - if set, all produced objects will be stored in database for subsequent verification.
-*/
-
-// Parse profile from env (format is write:duration)
-//   * write    - percent of VUs performing write operations (the rest will be read VUs)
-//   * duration - duration in seconds
-const [ write, duration ] = __ENV.PROFILE.split(':');
-
-// Allocate VUs between write and read operations
-const read_vu_count = Math.ceil(__ENV.CLIENTS / 100 * (100 - parseInt(write)));
-const write_vu_count = __ENV.CLIENTS - read_vu_count;
-
 // Select random gRPC endpoint for current VU
 const grpc_endpoints = __ENV.GRPC_ENDPOINTS.split(',');
 const grpc_endpoint = grpc_endpoints[Math.floor(Math.random() * grpc_endpoints.length)];
@@ -40,10 +22,27 @@ const grpc_client = native.connect(grpc_endpoint, '');
 const registry_enabled = !!__ENV.REGISTRY_FILE;
 const obj_registry = registry_enabled ? registry.open(__ENV.REGISTRY_FILE) : undefined;
 
+const duration = __ENV.DURATION;
+
+const delete_age = __ENV.DELETE_AGE ? parseInt(__ENV.DELETE_AGE) : undefined;
+let obj_to_delete_selector = undefined;
+if (registry_enabled && delete_age) {
+    obj_to_delete_selector = registry.getSelector(
+        __ENV.REGISTRY_FILE,
+        "obj_to_delete",
+        {
+            status: "created",
+            age: delete_age,
+        }
+    );
+}
+
+
 const generator = datagen.generator(1024 * parseInt(__ENV.WRITE_OBJ_SIZE));
 
 const scenarios = {};
 
+const write_vu_count = parseInt(__ENV.WRITERS || '0');
 if (write_vu_count > 0) {
     scenarios.write = {
         executor: 'constant-vus',
@@ -51,9 +50,10 @@ if (write_vu_count > 0) {
         duration: `${duration}s`,
         exec: 'obj_write', 
         gracefulStop: '5s',
-    }
+    };
 }
 
+const read_vu_count = parseInt(__ENV.READERS || '0');
 if (read_vu_count > 0) {
     scenarios.read = {
         executor: 'constant-vus',
@@ -61,13 +61,35 @@ if (read_vu_count > 0) {
         duration: `${duration}s`,
         exec: 'obj_read', 
         gracefulStop: '5s',
-    }
+    };
 }
 
+const delete_vu_count = parseInt(__ENV.DELETERS || '0');
+if (delete_vu_count > 0) {
+    scenarios.delete = {
+        executor: 'constant-vus',
+        vus: delete_vu_count,
+        duration: `${duration}s`,
+        exec: 'obj_delete', 
+        gracefulStop: '5s',
+    };
+}
+
+export const options = {
+    scenarios,
+    setupTimeout: '5s',
+};
+
 export function setup() {
-    console.log("Pregenerated containers: " + container_list.length);
-    console.log("Pregenerated read object size: " + read_size);
-    console.log("Pregenerated total objects: " + obj_list.length);
+    const total_vu_count = write_vu_count + read_vu_count + delete_vu_count;
+
+    console.log(`Pregenerated containers:       ${container_list.length}`);
+    console.log(`Pregenerated read object size: ${read_size}`);
+    console.log(`Pregenerated total objects:    ${obj_list.length}`);
+    console.log(`Reading VUs:                   ${read_vu_count}`);
+    console.log(`Writing VUs:                   ${write_vu_count}`);
+    console.log(`Deleting VUs:                  ${delete_vu_count}`);
+    console.log(`Total VUs:                     ${total_vu_count}`);
 }
 
 export function teardown(data) {
@@ -75,11 +97,6 @@ export function teardown(data) {
         obj_registry.close();
     }
 }
-
-export const options = {
-    scenarios,
-    setupTimeout: '5s',
-};
 
 export function obj_write() {
     if (__ENV.SLEEP) {
@@ -113,6 +130,30 @@ export function obj_read() {
     if (!resp.success) {
         console.log(resp.error);
     }
+}
+
+export function obj_delete() {
+    if (__ENV.SLEEP) {
+        sleep(__ENV.SLEEP);
+    }
+
+    const obj = obj_to_delete_selector.nextObject();
+    if (!obj) {
+        // If there are no objects to delete, we reset selector to start scanning from the
+        // beginning of registry. Then we wait for some time until suitable object might appear
+        obj_to_delete_selector.reset(delete_age);
+        sleep(delete_age / 2);
+        return;
+    }
+
+    const resp = grpc_client.delete(obj.c_id, obj.o_id);
+    if (!resp.success) {
+        // Log errors except (2052 - object already deleted)
+        console.log(resp.error);
+        return;
+    }
+
+    obj_registry.deleteObject(obj.id);
 }
 
 export function uuidv4() {

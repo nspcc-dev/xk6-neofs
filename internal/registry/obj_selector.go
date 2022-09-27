@@ -18,6 +18,10 @@ type ObjSelector struct {
 	filter *ObjFilter
 	mu     sync.Mutex
 	lastId uint64
+	// UTC date&time before which selector is locked for iteration or resetting.
+	// This lock prevents concurrency issues when some VUs are selecting objects
+	// while another VU resets the selector and attempts to select the same objects
+	lockedUntil time.Time
 }
 
 // NewObjSelector creates a new instance of object selector that can iterate over
@@ -44,6 +48,10 @@ func (o *ObjSelector) NextObject() (*ObjectInfo, error) {
 		// TODO: consider singleton channel that will produce those ids on demand
 		o.mu.Lock()
 		defer o.mu.Unlock()
+
+		if time.Now().UTC().Before(o.lockedUntil) {
+			return nil
+		}
 
 		// Establish the start position for searching the next object:
 		// If we should go from the beginning (lastId=0), then we start from the first element
@@ -84,11 +92,19 @@ func (o *ObjSelector) NextObject() (*ObjectInfo, error) {
 }
 
 // Resets object selector to start scanning objects from the beginning.
-func (o *ObjSelector) Reset() {
+// After resetting the selector is locked for specified lockTime to prevent
+// concurrency issues.
+func (o *ObjSelector) Reset(lockTime int) bool {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
+	if time.Now().UTC().Before(o.lockedUntil) {
+		return false
+	}
+
 	o.lastId = 0
+	o.lockedUntil = time.Now().UTC().Add(time.Duration(lockTime) * time.Second)
+	return true
 }
 
 // Count returns total number of objects that match filter of the selector.

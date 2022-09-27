@@ -4,16 +4,16 @@ import s3 from 'k6/x/neofs/s3';
 import { sleep } from 'k6';
 import { Counter } from 'k6/metrics';
 
-/*
-  ./k6 run -e CLIENTS=200 -e TIME_LIMIT=30 -e GRPC_ENDPOINTS=node4.data:8084 
-    -e REGISTRY_FILE=registry.bolt scenarios/verify.js
-*/
 const obj_registry = registry.open(__ENV.REGISTRY_FILE);
 
 // Time limit (in seconds) for the run
 const time_limit = __ENV.TIME_LIMIT || "60";
 
-// Count of objects in each status
+// Number of objects in each status. These counters are cumulative in a
+// sense that they reflect total number of objects in the registry, not just
+// number of objects that were processed by specific run of this scenario.
+// This allows to run this scenario multiple times and collect overall
+// statistics in the final run.
 const obj_counters = {
     verified: new Counter('verified_obj'),
     skipped: new Counter('skipped_obj'),
@@ -85,7 +85,6 @@ export function obj_verify() {
         console.log("All objects have been verified");
         return;
     }
-    console.log(`Verifying object ${obj.id}`);
 
     const obj_status = verify_object_with_retries(obj, 3);
     obj_counters[obj_status].add(1);

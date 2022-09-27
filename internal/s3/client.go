@@ -28,6 +28,11 @@ type (
 		Error   string
 	}
 
+	DeleteResponse struct {
+		Success bool
+		Error   string
+	}
+
 	GetResponse struct {
 		Success bool
 		Error   string
@@ -64,6 +69,18 @@ func (c *Client) Put(bucket, key string, payload goja.ArrayBuffer) PutResponse {
 	stats.ReportDataSent(c.vu, float64(sz))
 	stats.Report(c.vu, objPutDuration, metrics.D(time.Since(start)))
 	return PutResponse{Success: true}
+}
+
+func (c *Client) Delete(bucket, key string) DeleteResponse {
+	_, err := c.cli.DeleteObject(c.vu.Context(), &s3.DeleteObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return DeleteResponse{Success: false, Error: err.Error()}
+	}
+
+	return DeleteResponse{Success: true}
 }
 
 func (c *Client) Get(bucket, key string) GetResponse {
