@@ -14,22 +14,6 @@ const bucket_list = new SharedArray('bucket_list', function () {
 
 const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 
-/* 
-    ./k6 run -e PROFILE=0:60 -e CLIENTS=200 -e WRITE_OBJ_SIZE=1024 \
-      -e S3_ENDPOINTS=host1:8084,host2:8084 -e PREGEN_JSON=test.json \
-      scenarios/s3.js
-
-    OBJ_NAME - if specified, this name will be used for all write operations instead of random generation.
-    REGISTRY_FILE - if set, all produced objects will be stored in database for subsequent verification.
-*/
-
-// Parse profile from env
-const [ write, duration ] = __ENV.PROFILE.split(':');
-
-// Allocate VUs between write and read operations
-let read_vu_count = Math.ceil(__ENV.CLIENTS / 100 * (100 - parseInt(write)));
-let write_vu_count = __ENV.CLIENTS - read_vu_count;
-
 // Select random S3 endpoint for current VU
 const s3_endpoints = __ENV.S3_ENDPOINTS.split(',');
 const s3_endpoint = s3_endpoints[Math.floor(Math.random() * s3_endpoints.length)];
@@ -38,11 +22,27 @@ const s3_client = s3.connect(`http://${s3_endpoint}`);
 const registry_enabled = !!__ENV.REGISTRY_FILE;
 const obj_registry = registry_enabled ? registry.open(__ENV.REGISTRY_FILE) : undefined;
 
+const duration = __ENV.DURATION;
+
+const delete_age = __ENV.DELETE_AGE ? parseInt(__ENV.DELETE_AGE) : undefined;
+let obj_to_delete_selector = undefined;
+if (registry_enabled && delete_age) {
+    obj_to_delete_selector = registry.getSelector(
+        __ENV.REGISTRY_FILE,
+        "obj_to_delete",
+        {
+            status: "created",
+            age: delete_age,
+        }
+    );
+}
+
 const generator = datagen.generator(1024 * parseInt(__ENV.WRITE_OBJ_SIZE));
 
 const scenarios = {};
 
-if (write_vu_count > 0){
+const write_vu_count = parseInt(__ENV.WRITERS || '0');
+if (write_vu_count > 0) {
     scenarios.write = {
         executor: 'constant-vus',
         vus: write_vu_count,
@@ -52,7 +52,8 @@ if (write_vu_count > 0){
     };
 }
 
-if (read_vu_count > 0){
+const read_vu_count = parseInt(__ENV.READERS || '0');
+if (read_vu_count > 0) {
     scenarios.read = {
         executor: 'constant-vus',
         vus: read_vu_count,
@@ -62,10 +63,32 @@ if (read_vu_count > 0){
     };
 }
 
+const delete_vu_count = parseInt(__ENV.DELETERS || '0');
+if (delete_vu_count > 0) {
+    scenarios.delete = {
+        executor: 'constant-vus',
+        vus: delete_vu_count,
+        duration: `${duration}s`,
+        exec: 'obj_delete', 
+        gracefulStop: '5s',
+    };
+}
+
+export const options = {
+    scenarios,
+    setupTimeout: '5s',
+};
+
 export function setup() {
-    console.log("Pregenerated buckets: " + bucket_list.length);
-    console.log("Pregenerated read object size: " + read_size);
-    console.log("Pregenerated total objects: " + obj_list.length);
+    const total_vu_count = write_vu_count + read_vu_count + delete_vu_count;
+
+    console.log(`Pregenerated buckets:          ${bucket_list.length}`);
+    console.log(`Pregenerated read object size: ${read_size}`);
+    console.log(`Pregenerated total objects:    ${obj_list.length}`);
+    console.log(`Reading VUs:                   ${read_vu_count}`);
+    console.log(`Writing VUs:                   ${write_vu_count}`);
+    console.log(`Deleting VUs:                  ${delete_vu_count}`);
+    console.log(`Total VUs:                     ${total_vu_count}`);
 }
 
 export function teardown(data) {
@@ -73,11 +96,6 @@ export function teardown(data) {
         obj_registry.close();
     }
 }
-
-export const options = {
-    scenarios,
-    setupTimeout: '5s',
-};
 
 export function obj_write() {
     if (__ENV.SLEEP) {
@@ -110,6 +128,29 @@ export function obj_read() {
     if (!resp.success) {
         console.log(resp.error);
     } 
+}
+
+export function obj_delete() {
+    if (__ENV.SLEEP) {
+        sleep(__ENV.SLEEP);
+    }
+
+    const obj = obj_to_delete_selector.nextObject();
+    if (!obj) {
+        // If there are no objects to delete, we reset selector to start scanning from the
+        // beginning of registry. Then we wait for some time until suitable object might appear
+        obj_to_delete_selector.reset(delete_age);
+        sleep(delete_age / 2);
+        return;
+    }
+
+    const resp = s3_client.delete(obj.s3_bucket, obj.s3_key);
+    if (!resp.success) {
+        console.log(`Error deleting object ${obj.id}: ${resp.error}`);
+        return;
+    }
+
+    obj_registry.deleteObject(obj.id);
 }
 
 export function uuidv4() {

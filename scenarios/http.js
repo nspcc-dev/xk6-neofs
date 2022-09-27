@@ -1,92 +1,109 @@
 import datagen from 'k6/x/neofs/datagen';
+import registry from 'k6/x/neofs/registry';
 import http from 'k6/http';
 import { SharedArray } from 'k6/data';
 import { sleep } from 'k6';
 
 const obj_list = new SharedArray('obj_list', function () {
-    return JSON.parse(open(__ENV.PREGEN_JSON)).objects; });
+    return JSON.parse(open(__ENV.PREGEN_JSON)).objects;
+});
 
 const container_list = new SharedArray('container_list', function () {
-    return JSON.parse(open(__ENV.PREGEN_JSON)).containers; });
+    return JSON.parse(open(__ENV.PREGEN_JSON)).containers;
+});
 
 const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 
-/* 
-   Parse profile from env.
-   Format write:obj_size:
-     * write    - write operations in percent, relative to read operations
-     * duration - duration in seconds
-*/
+// Select random HTTP endpoint for current VU
+const http_endpoints = __ENV.HTTP_ENDPOINTS.split(',');
+const http_endpoint = http_endpoints[Math.floor(Math.random() * http_endpoints.length)];
 
-const [ write, duration ] = __ENV.PROFILE.split(':');
+const registry_enabled = !!__ENV.REGISTRY_FILE;
+const obj_registry = registry_enabled ? registry.open(__ENV.REGISTRY_FILE) : undefined;
 
-// Set VUs between write and read operations
-let vus_read = Math.ceil(__ENV.CLIENTS/100*(100-parseInt(write)))
-let vus_write = __ENV.CLIENTS - vus_read
+const duration = __ENV.DURATION;
 
 const generator = datagen.generator(1024 * parseInt(__ENV.WRITE_OBJ_SIZE));
 
-let nodes = __ENV.NODES.split(',') // node1.neofs
-let rand_node = nodes[Math.floor(Math.random()*nodes.length)];
+const scenarios = {};
 
-let scenarios = {}
-
-if (vus_write > 0){
-    scenarios.write= {
+const write_vu_count = parseInt(__ENV.WRITERS || '0');
+if (write_vu_count > 0) {
+    scenarios.write = {
         executor: 'constant-vus',
-        vus: vus_write,
+        vus: write_vu_count,
         duration: `${duration}s`,
         exec: 'obj_write', 
         gracefulStop: '5s',
     }
 }
 
-if (vus_read > 0){
-    scenarios.read= {
+const read_vu_count = parseInt(__ENV.READERS || '0');
+if (read_vu_count > 0) {
+    scenarios.read = {
         executor: 'constant-vus',
-        vus: vus_read,
+        vus: read_vu_count,
         duration: `${duration}s`,
         exec: 'obj_read', 
         gracefulStop: '5s',
     }
 }
 
-export function setup() {
-    console.log("Pregenerated containers: " + container_list.length)
-    console.log("Pregenerated read object size: " + read_size)
-    console.log("Pregenerated total objects: " + obj_list.length)
-}
-
 export const options = {
-    scenarios: scenarios,
+    scenarios,
     setupTimeout: '5s',
 };
 
+export function setup() {
+    const total_vu_count = write_vu_count + read_vu_count + delete_vu_count;
+
+    console.log(`Pregenerated containers:       ${container_list.length}`);
+    console.log(`Pregenerated read object size: ${read_size}`);
+    console.log(`Pregenerated total objects:    ${obj_list.length}`);
+    console.log(`Reading VUs:                   ${read_vu_count}`);
+    console.log(`Writing VUs:                   ${write_vu_count}`);
+    console.log(`Total VUs:                     ${total_vu_count}`);
+}
+
+export function teardown(data) {
+    if (obj_registry) {
+        obj_registry.close();
+    }
+}
+
 export function obj_write() {
-    const { payload } = generator.genPayload(false);
-    let data = {
+    if (__ENV.SLEEP) {
+        sleep(__ENV.SLEEP);
+    }
+
+    const container = container_list[Math.floor(Math.random() * container_list.length)];
+
+    const { payload, hash } = generator.genPayload(registry_enabled);
+    const data = {
         field: uuidv4(),
         file: http.file(payload, "random.data"),
     };
-    let container = container_list[Math.floor(Math.random()*container_list.length)];
 
-    let resp = http.post(`http://${rand_node}/upload/${container}`, data);
+    const resp = http.post(`http://${http_endpoint}/upload/${container}`, data);
     if (resp.status != 200) {
-        console.log(`${resp.status}`);
+        console.log(`ERROR: ${resp.status} ${resp.error}`);
+        return;
     }
-    if (__ENV.SLEEP) {
-        sleep(__ENV.SLEEP);
+    const object_id = JSON.parse(resp.body).object_id;
+    if (obj_registry) {
+        obj_registry.addObject(container, object_id, "", "", hash);
     }
 }
 
 export function obj_read() {
-    let random_read_obj = obj_list[Math.floor(Math.random()*obj_list.length)];
-    let resp = http.get(`http://${rand_node}/get/${random_read_obj.container}/${random_read_obj.object}`);
-    if (resp.status != 200) {
-        console.log(`${random_read_obj.object} - ${resp.status}`);
-    }
     if (__ENV.SLEEP) {
         sleep(__ENV.SLEEP);
+    }
+
+    const obj = obj_list[Math.floor(Math.random() * obj_list.length)];
+    const resp = http.get(`http://${http_endpoint}/get/${obj.container}/${obj.object}`);
+    if (resp.status != 200) {
+        console.log(`ERROR reading ${obj.object}: ${resp.status}`);
     }
 }
 
