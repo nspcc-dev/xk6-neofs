@@ -55,7 +55,7 @@ export const options = {
 };
 
 export function setup() {
-    const total_vu_count = write_vu_count + read_vu_count + delete_vu_count;
+    const total_vu_count = write_vu_count + read_vu_count;
 
     console.log(`Pregenerated containers:       ${container_list.length}`);
     console.log(`Pregenerated read object size: ${read_size}`);
