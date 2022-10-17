@@ -94,7 +94,7 @@ def execute_cmd(cmd_line):
 
 
 def create_container():
-    cmd_line = f"neofs-cli --rpc-endpoint {args.endpoint} container create -g --policy {args.policy} --basic-acl public-read-write --await"
+    cmd_line = f"neofs-cli --rpc-endpoint {args.endpoint} container create -g --policy '{args.policy}' --basic-acl public-read-write --await"
     output, success = execute_cmd(cmd_line)
 
     if not success:
