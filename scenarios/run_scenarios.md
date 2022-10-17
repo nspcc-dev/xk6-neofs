@@ -29,7 +29,7 @@ $ ./scenarios/preset/preset_grpc.py --size 1024 --containers 1 --out grpc.json -
 2. Execute scenario with options:
 
 ```shell
-$ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=8192 -e READERS=20 -e WRITERS=20 -e DELETERS=30 -e DELETE_AGE=10 -e REGITRY_FILE=registry.bolt -e GRPC_ENDPOINTS=host1:8080,host2:8080 -e PREGEN_JSON=./grpc.json scenarios/grpc.js
+$ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=8192 -e READERS=20 -e WRITERS=20 -e DELETERS=30 -e DELETE_AGE=10 -e REGISTRY_FILE=registry.bolt -e GRPC_ENDPOINTS=host1:8080,host2:8080 -e PREGEN_JSON=./grpc.json scenarios/grpc.js
 ```
 
 Options (in addition to the common options):
@@ -50,7 +50,7 @@ $ ./scenarios/preset/preset_grpc.py --size 1024 --containers 1 --out grpc.json -
 2. Execute scenario with options:
 
 ```shell
-$ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=8192 -e READERS=10 -e WRITERS=20 -e REGITRY_FILE=registry.bolt -e HTTP_ENDPOINTS=host1:8888,host2:8888 -e PREGEN_JSON=./grpc.json scenarios/http.js
+$ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=8192 -e READERS=10 -e WRITERS=20 -e REGISTRY_FILE=registry.bolt -e HTTP_ENDPOINTS=host1:8888,host2:8888 -e PREGEN_JSON=./grpc.json scenarios/http.js
 ```
 
 Options (in addition to the common options):
