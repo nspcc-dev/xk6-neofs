@@ -27,7 +27,7 @@ print(args)
 def main():
     container_list = []
     objects_struct = []
-    payload_filepath='/tmp/data_file'
+    payload_filepath = '/tmp/data_file'
 
     if args.update:
         # Open file
@@ -41,7 +41,7 @@ def main():
 
         for run in containers_runs:
             if run.result() is not None:
-                container_list.append(run.result()) 
+                container_list.append(run.result())
 
         print("Create containers: Completed")
 
@@ -54,20 +54,20 @@ def main():
     for container in container_list:
         print(f" > Upload objects for container {container}")
         with ProcessPoolExecutor(max_workers=50) as executor:
-            objects_runs = {executor.submit(upload_object, container, payload_filepath): _ for _ in range(int(args.preload_obj))}
+            objects_runs = {executor.submit(upload_object, container, payload_filepath): _ for _ in
+                            range(int(args.preload_obj))}
 
         for run in objects_runs:
             if run.result() is not None:
-                objects_struct.append({'container': container, 'object': run.result()}) 
+                objects_struct.append({'container': container, 'object': run.result()})
         print(f" > Upload objects for container {container}: Completed")
-
 
     print("Upload objects to each container: Completed")
 
-    data = { 'containers': container_list, 'objects': objects_struct, 'obj_size': args.size + " Kb"  }
+    data = {'containers': container_list, 'objects': objects_struct, 'obj_size': args.size + " Kb"}
 
     with open(args.out, 'w') as f:
-       json.dump(data, f, ensure_ascii=False)
+        json.dump(data, f, ensure_ascii=False)
 
     print(f"Result:")
     print(f" > Total Containers has been created: {len(container_list)}.")
@@ -75,8 +75,8 @@ def main():
 
 
 def random_payload(payload_filepath):
-    with open('%s'%payload_filepath, 'wb') as fout:
-        fout.write(os.urandom(1024*int(args.size))) 
+    with open('%s' % payload_filepath, 'wb') as fout:
+        fout.write(os.urandom(1024 * int(args.size)))
 
 
 def execute_cmd(cmd_line):
@@ -84,7 +84,7 @@ def execute_cmd(cmd_line):
     output = ""
     try:
         output = check_output(args, stderr=STDOUT).decode()
-        success = True 
+        success = True
 
     except CalledProcessError as e:
         output = e.output.decode()
@@ -104,6 +104,7 @@ def create_container():
             fst_str = output.split('\n')[0]
         except Exception:
             print(f"Got empty output: {output}")
+            return
         splitted = fst_str.split(": ")
         if len(splitted) != 2:
             raise ValueError(f"no CID was parsed from command output: \t{fst_str}")
@@ -123,6 +124,7 @@ def upload_object(container, payload_filepath):
             snd_str = out.split('\n')[1]
         except:
             print(f"Got empty input: {out}")
+            return
         splitted = snd_str.split(": ")
         if len(splitted) != 2:
             raise Exception(f"no OID was parsed from command output: \t{snd_str}")
