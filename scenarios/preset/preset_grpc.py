@@ -68,7 +68,7 @@ def main():
 
     data = {'containers': container_list, 'objects': objects_struct, 'obj_size': args.size + " Kb"}
 
-    with open(args.out, 'w') as f:
+    with open(args.out, 'w+') as f:
         json.dump(data, f, ensure_ascii=False)
 
     print(f"Result:")
@@ -77,7 +77,7 @@ def main():
 
 
 def random_payload(payload_filepath):
-    with open('%s' % payload_filepath, 'wb') as fout:
+    with open('%s' % payload_filepath, 'w+b') as fout:
         fout.write(os.urandom(1024 * int(args.size)))
 
 
@@ -100,7 +100,7 @@ def create_container():
     output, success = execute_cmd(cmd_line)
 
     if not success:
-        print(f" > Container has not been created.")
+        print(f" > Container has not been created:\n{output}")
     else:
         try:
             fst_str = output.split('\n')[0]
@@ -119,7 +119,7 @@ def upload_object(container, payload_filepath):
     out, success = execute_cmd(cmd_line)
 
     if not success:
-        print(f" > Object {object_name} has not been uploaded.")
+        print(f" > Object {object_name} has not been uploaded:\n{out}")
     else:
         try:
             # taking second string from command output

@@ -66,7 +66,7 @@ def main():
 
     data = {'buckets': bucket_list, 'objects': objects_struct, 'obj_size': args.size + " Kb"}
 
-    with open(args.out, 'w') as f:
+    with open(args.out, 'w+') as f:
         json.dump(data, f, ensure_ascii=False)
 
     print(f"Result:")
@@ -75,7 +75,7 @@ def main():
 
 
 def random_payload(payload_filepath):
-    with open('%s' % payload_filepath, 'wb') as fout:
+    with open('%s' % payload_filepath, 'w+b') as fout:
         fout.write(os.urandom(1024 * int(args.size)))
 
 
