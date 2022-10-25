@@ -69,7 +69,7 @@ def main():
     data = {'containers': container_list, 'objects': objects_struct, 'obj_size': args.size + " Kb"}
 
     with open(args.out, 'w+') as f:
-        json.dump(data, f, ensure_ascii=False)
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
     print(f"Result:")
     print(f" > Total Containers has been created: {len(container_list)}.")

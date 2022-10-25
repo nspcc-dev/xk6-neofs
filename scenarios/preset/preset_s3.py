@@ -67,7 +67,7 @@ def main():
     data = {'buckets': bucket_list, 'objects': objects_struct, 'obj_size': args.size + " Kb"}
 
     with open(args.out, 'w+') as f:
-        json.dump(data, f, ensure_ascii=False)
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
     print(f"Result:")
     print(f" > Total Buckets has been created: {len(bucket_list)}.")
