@@ -143,10 +143,6 @@ export function obj_delete() {
 
     const obj = obj_to_delete_selector.nextObject();
     if (!obj) {
-        // If there are no objects to delete, we reset selector to start scanning from the
-        // beginning of registry. Then we wait for some time until suitable object might appear
-        obj_to_delete_selector.reset(delete_age);
-        sleep(delete_age / 2);
         return;
     }
 
