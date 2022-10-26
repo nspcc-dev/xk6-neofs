@@ -110,6 +110,9 @@ def create_container():
         splitted = fst_str.split(": ")
         if len(splitted) != 2:
             raise ValueError(f"no CID was parsed from command output: \t{fst_str}")
+
+        print(f"Created container: {splitted[1]}")
+
         return splitted[1]
 
 
