@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -13,17 +12,14 @@ import (
 	"time"
 
 	"github.com/dop251/goja"
-	"github.com/nspcc-dev/neo-go/pkg/vm/stackitem"
-	"github.com/nspcc-dev/neofs-sdk-go/acl"
 	"github.com/nspcc-dev/neofs-sdk-go/checksum"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
+	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
-	"github.com/nspcc-dev/neofs-sdk-go/object/address"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
-	"github.com/nspcc-dev/neofs-sdk-go/policy"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/nspcc-dev/neofs-sdk-go/version"
@@ -96,12 +92,9 @@ func (c *Client) SetBufferSize(size int) {
 func (c *Client) Put(containerID string, headers map[string]string, payload goja.ArrayBuffer) PutResponse {
 	cliContainerID := parseContainerID(containerID)
 
-	var addr address.Address
-	addr.SetContainerID(cliContainerID)
-
 	tok := c.tok
 	tok.ForVerb(session.VerbObjectPut)
-	tok.ApplyTo(addr)
+	tok.BindContainer(cliContainerID)
 	err := tok.Sign(c.key)
 	if err != nil {
 		panic(err)
@@ -128,23 +121,17 @@ func (c *Client) Put(containerID string, headers map[string]string, payload goja
 		return PutResponse{Success: false, Error: err.Error()}
 	}
 
-	var id oid.ID
-	resp.ReadStoredObjectID(&id)
-
-	return PutResponse{Success: true, ObjectID: id.String()}
+	return PutResponse{Success: true, ObjectID: resp.StoredObjectID().String()}
 }
 
 func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 	cliContainerID := parseContainerID(containerID)
 	cliObjectID := parseObjectID(objectID)
 
-	var addr address.Address
-	addr.SetContainerID(cliContainerID)
-	addr.SetObjectID(cliObjectID)
-
 	tok := c.tok
 	tok.ForVerb(session.VerbObjectDelete)
-	tok.ApplyTo(addr)
+	tok.BindContainer(cliContainerID)
+	tok.LimitByObjects(cliObjectID)
 	err := tok.Sign(c.key)
 	if err != nil {
 		panic(err)
@@ -167,13 +154,10 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 	cliContainerID := parseContainerID(containerID)
 	cliObjectID := parseObjectID(objectID)
 
-	var addr address.Address
-	addr.SetContainerID(cliContainerID)
-	addr.SetObjectID(cliObjectID)
-
 	tok := c.tok
 	tok.ForVerb(session.VerbObjectGet)
-	tok.ApplyTo(addr)
+	tok.BindContainer(cliContainerID)
+	tok.LimitByObjects(cliObjectID)
 	err := tok.Sign(c.key)
 	if err != nil {
 		panic(err)
@@ -241,13 +225,10 @@ func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHa
 	cliContainerID := parseContainerID(containerID)
 	cliObjectID := parseObjectID(objectID)
 
-	var addr address.Address
-	addr.SetContainerID(cliContainerID)
-	addr.SetObjectID(cliObjectID)
-
 	tok := c.tok
 	tok.ForVerb(session.VerbObjectGet)
-	tok.ApplyTo(addr)
+	tok.BindContainer(cliContainerID)
+	tok.LimitByObjects(cliObjectID)
 	err := tok.Sign(c.key)
 	if err != nil {
 		panic(err)
@@ -281,34 +262,40 @@ func (c *Client) putCnrErrorResponse(err error) PutContainerResponse {
 func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 	stats.Report(c.vu, cnrPutTotal, 1)
 
-	opts := []container.Option{
-		container.WithAttribute(container.AttributeTimestamp, strconv.FormatInt(time.Now().Unix(), 10)),
-		container.WithOwnerPublicKey(&c.key.PublicKey),
-	}
+	var cnr container.Container
+	cnr.Init()
+
+	var usr user.ID
+	user.IDFromKey(&usr, c.key.PublicKey)
+
+	container.SetCreationTime(&cnr, time.Now())
+	cnr.SetOwner(usr)
 
 	if basicACLStr, ok := params["acl"]; ok {
-		basicACL, err := acl.ParseBasicACL(basicACLStr)
+		var basicACL acl.Basic
+		err := basicACL.DecodeString(basicACLStr)
 		if err != nil {
 			return c.putCnrErrorResponse(err)
 		}
-		opts = append(opts, container.WithCustomBasicACL(basicACL))
+
+		cnr.SetBasicACL(basicACL)
 	}
 
 	placementPolicyStr, ok := params["placement_policy"]
 	if ok {
-		placementPolicy, err := policy.Parse(placementPolicyStr)
+		var placementPolicy netmap.PlacementPolicy
+		err := placementPolicy.DecodeString(placementPolicyStr)
 		if err != nil {
 			return c.putCnrErrorResponse(err)
 		}
-		opts = append(opts, container.WithPolicy(placementPolicy))
+
+		cnr.SetPlacementPolicy(placementPolicy)
 	}
 
 	containerName, hasName := params["name"]
 	if hasName {
-		opts = append(opts, container.WithAttribute(container.AttributeName, containerName))
+		container.SetName(&cnr, containerName)
 	}
-
-	cnr := container.New(opts...)
 
 	var err error
 	var nameScopeGlobal bool
@@ -322,12 +309,16 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 		if !hasName {
 			return c.putCnrErrorResponse(errors.New("you must provide container name if name_scope_global param is set"))
 		}
-		container.SetNativeName(cnr, containerName)
+
+		var domain container.Domain
+		domain.SetName(containerName)
+
+		container.WriteDomain(&cnr, domain)
 	}
 
 	start := time.Now()
 	var prm client.PrmContainerPut
-	prm.SetContainer(*cnr)
+	prm.SetContainer(cnr)
 
 	res, err := c.cli.ContainerPut(c.vu.Context(), prm)
 	if err != nil {
@@ -435,14 +426,15 @@ func put(vu modules.VU, bufSize int, cli *client.Client, tok *session.Object,
 	stats.Report(vu, objPutTotal, 1)
 	start := time.Now()
 
-	objectWriter, err := cli.ObjectPutInit(vu.Context(), client.PrmObjectPutInit{})
+	var prm client.PrmObjectPutInit
+	if tok != nil {
+		prm.WithinSession(*tok)
+	}
+
+	objectWriter, err := cli.ObjectPutInit(vu.Context(), prm)
 	if err != nil {
 		stats.Report(vu, objPutFails, 1)
 		return nil, err
-	}
-
-	if tok != nil {
-		objectWriter.WithinSession(*tok)
 	}
 
 	if !objectWriter.WriteHeader(*hdr) {
@@ -477,26 +469,9 @@ func parseNetworkInfo(ctx context.Context, cli *client.Client) (maxObjSize, epoc
 		return 0, 0, false, err
 	}
 
-	epoch = ni.Info().CurrentEpoch()
-	err = errors.New("network configuration misses max object size value")
+	ninfo := ni.Info()
 
-	ni.Info().NetworkConfig().IterateParameters(func(parameter *netmap.NetworkParameter) bool {
-		switch string(parameter.Key()) {
-		case "MaxObjectSize":
-			buf := make([]byte, 8)
-			copy(buf[:], parameter.Value())
-			maxObjSize = binary.LittleEndian.Uint64(buf)
-			err = nil
-		case "HomomorphicHashingDisabled":
-			arr := stackitem.NewByteArray(parameter.Value())
-			hhDisabled, err = arr.TryBool()
-			if err != nil {
-				return true
-			}
-		}
-		return false
-	})
-	return maxObjSize, epoch, hhDisabled, err
+	return ninfo.MaxObjectSize(), ninfo.CurrentEpoch(), ninfo.HomomorphicHashingDisabled(), err
 }
 
 type waitParams struct {
@@ -509,12 +484,10 @@ func (x *waitParams) setDefaults() {
 	x.pollInterval = 5 * time.Second
 }
 
-func (c *Client) waitForContainerPresence(ctx context.Context, cnrID *cid.ID, wp *waitParams) error {
+func (c *Client) waitForContainerPresence(ctx context.Context, cnrID cid.ID, wp *waitParams) error {
 	return waitFor(ctx, wp, func(ctx context.Context) bool {
 		var prm client.PrmContainerGet
-		if cnrID != nil {
-			prm.SetContainer(*cnrID)
-		}
+		prm.SetContainer(cnrID)
 
 		_, err := c.cli.ContainerGet(ctx, prm)
 		return err == nil
