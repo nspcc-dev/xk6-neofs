@@ -65,6 +65,10 @@ if (read_vu_count > 0) {
 
 const delete_vu_count = parseInt(__ENV.DELETERS || '0');
 if (delete_vu_count > 0) {
+    if (!obj_to_delete_selector) {
+        throw 'Positive DELETE worker number without a proper object selector';
+    }
+
     scenarios.delete = {
         executor: 'constant-vus',
         vus: delete_vu_count,
