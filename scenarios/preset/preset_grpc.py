@@ -46,6 +46,8 @@ def main():
         print("Create containers: Completed")
 
     print(f" > Containers: {container_list}")
+    if not container_list:
+        return
 
     print(f"Upload objects to each container: {args.preload_obj} ")
     random_payload(payload_filepath)
