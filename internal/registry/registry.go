@@ -68,7 +68,7 @@ func (r *Registry) Open(dbFilePath string) *ObjRegistry {
 func (r *Registry) open(dbFilePath string) *ObjRegistry {
 	registry := r.root.registries[dbFilePath]
 	if registry == nil {
-		registry = NewObjRegistry(dbFilePath)
+		registry = NewObjRegistry(r.vu.Context(), dbFilePath)
 		r.root.registries[dbFilePath] = registry
 	}
 	return registry

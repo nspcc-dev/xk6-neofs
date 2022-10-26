@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,8 @@ import (
 )
 
 type ObjRegistry struct {
+	ctx    context.Context
+	cancel context.CancelFunc
 	boltDB *bbolt.DB
 }
 
@@ -38,14 +41,20 @@ type ObjectInfo struct {
 // about objects in the specified bolt database. As registry uses read-write
 // connection to the database, there may be only one instance of object registry
 // per database file at a time.
-func NewObjRegistry(dbFilePath string) *ObjRegistry {
+func NewObjRegistry(ctx context.Context, dbFilePath string) *ObjRegistry {
 	options := bbolt.Options{Timeout: 100 * time.Millisecond}
 	boltDB, err := bbolt.Open(dbFilePath, os.ModePerm, &options)
 	if err != nil {
 		panic(err)
 	}
 
-	objRepository := &ObjRegistry{boltDB: boltDB}
+	ctx, cancel := context.WithCancel(ctx)
+
+	objRepository := &ObjRegistry{
+		ctx:    ctx,
+		cancel: cancel,
+		boltDB: boltDB,
+	}
 	return objRepository
 }
 
@@ -118,6 +127,7 @@ func (o *ObjRegistry) DeleteObject(id uint64) error {
 }
 
 func (o *ObjRegistry) Close() error {
+	o.cancel()
 	return o.boltDB.Close()
 }
 
