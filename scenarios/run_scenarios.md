@@ -13,6 +13,7 @@ Scenarios `grpc.js`, `http.js` and `s3.js` support the following options:
   * `PREGEN_JSON` - path to json file with pre-generated containers and objects (in case of http scenario we use json pre-generated for grpc scenario).
   * `SLEEP_WRITE` - time interval (in seconds) between writing VU iterations.
   * `SLEEP_READ` - time interval (in seconds) between reading VU iterations.
+  * `SELECTION_SIZE` - size of batch to select for deletion (default: 1000).
 
 Examples of how to use these options are provided below for each scenario.
 
@@ -115,3 +116,4 @@ Options:
   * `TIME_LIMIT` - amount of time in seconds that is sufficient to verify all objects. If this time interval ends, then verification process will be interrupted and objects that have not been checked will stay in the `created` state.
   * `REGISTRY_FILE` - database file from which objects for verification should be read.
   * `SLEEP` - time interval (in seconds) between VU iterations.
+  * `SELECTION_SIZE` - size of batch to select for deletion (default: 1000).
