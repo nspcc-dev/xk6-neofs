@@ -41,6 +41,7 @@ if (__ENV.S3_ENDPOINTS) {
 const obj_to_verify_selector = registry.getSelector(
     __ENV.REGISTRY_FILE,
     "obj_to_verify",
+    __ENV.SELECTION_SIZE ? parseInt(__ENV.SELECTION_SIZE) : 0,
     {
         status: "created",
     }
@@ -70,7 +71,11 @@ export const options = {
 export function setup() {
     // Populate counters with initial values
     for (const [status, counter] of Object.entries(obj_counters)) {
-        const obj_selector = registry.getSelector(__ENV.REGISTRY_FILE, status, { status });
+        const obj_selector = registry.getSelector(
+            __ENV.REGISTRY_FILE,
+            status,
+            __ENV.SELECTION_SIZE ? parseInt(__ENV.SELECTION_SIZE) : 0,
+            { status });
         counter.add(obj_selector.count());
     }
 }

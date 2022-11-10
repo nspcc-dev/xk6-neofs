@@ -30,6 +30,7 @@ if (registry_enabled && delete_age) {
     obj_to_delete_selector = registry.getSelector(
         __ENV.REGISTRY_FILE,
         "obj_to_delete",
+        __ENV.SELECTION_SIZE ? parseInt(__ENV.SELECTION_SIZE) : 0,
         {
             status: "created",
             age: delete_age,

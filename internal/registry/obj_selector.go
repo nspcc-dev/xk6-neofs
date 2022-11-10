@@ -15,24 +15,28 @@ type ObjFilter struct {
 }
 
 type ObjSelector struct {
-	ctx     context.Context
-	objChan chan *ObjectInfo
-	boltDB  *bbolt.DB
-	filter  *ObjFilter
+	ctx       context.Context
+	objChan   chan *ObjectInfo
+	boltDB    *bbolt.DB
+	filter    *ObjFilter
+	cacheSize int
 }
 
-// objectSelectCache is a maximum number of the selected objects to be
-// cached for the ObjSelector.NextObject.
-const objectSelectCache = 100
+// objectSelectCache is the default maximum size of a batch to select from DB.
+const objectSelectCache = 1000
 
 // NewObjSelector creates a new instance of object selector that can iterate over
 // objects in the specified registry.
-func NewObjSelector(registry *ObjRegistry, filter *ObjFilter) *ObjSelector {
+func NewObjSelector(registry *ObjRegistry, selectionSize int, filter *ObjFilter) *ObjSelector {
+	if selectionSize <= 0 {
+		selectionSize = objectSelectCache
+	}
 	objSelector := &ObjSelector{
-		ctx:     registry.ctx,
-		boltDB:  registry.boltDB,
-		filter:  filter,
-		objChan: make(chan *ObjectInfo, objectSelectCache),
+		ctx:       registry.ctx,
+		boltDB:    registry.boltDB,
+		filter:    filter,
+		objChan:   make(chan *ObjectInfo, selectionSize*2),
+		cacheSize: selectionSize,
 	}
 
 	go objSelector.selectLoop()
@@ -78,7 +82,7 @@ func (o *ObjSelector) Count() (int, error) {
 }
 
 func (o *ObjSelector) selectLoop() {
-	cache := make([]*ObjectInfo, 0, objectSelectCache)
+	cache := make([]*ObjectInfo, 0, o.cacheSize)
 	var lastID uint64
 	defer close(o.objChan)
 
@@ -113,7 +117,7 @@ func (o *ObjSelector) selectLoop() {
 			}
 
 			// Iterate over objects to find the next object matching the filter.
-			for ; keyBytes != nil && len(cache) != objectSelectCache; keyBytes, objBytes = c.Next() {
+			for ; keyBytes != nil && len(cache) != o.cacheSize; keyBytes, objBytes = c.Next() {
 				if objBytes != nil {
 					var obj ObjectInfo
 					if err := json.Unmarshal(objBytes, &obj); err != nil {
@@ -145,7 +149,7 @@ func (o *ObjSelector) selectLoop() {
 			}
 		}
 
-		if len(cache) != objectSelectCache {
+		if len(cache) != o.cacheSize {
 			// no more objects, wait a little; the logic could be improved.
 			select {
 			case <-time.After(time.Second * time.Duration(o.filter.Age/2)):

@@ -74,7 +74,7 @@ func (r *Registry) open(dbFilePath string) *ObjRegistry {
 	return registry
 }
 
-func (r *Registry) GetSelector(dbFilePath string, name string, filter map[string]string) *ObjSelector {
+func (r *Registry) GetSelector(dbFilePath string, name string, cacheSize int, filter map[string]string) *ObjSelector {
 	objFilter, err := parseFilter(filter)
 	if err != nil {
 		panic(err)
@@ -86,7 +86,7 @@ func (r *Registry) GetSelector(dbFilePath string, name string, filter map[string
 	selector := r.root.selectors[name]
 	if selector == nil {
 		registry := r.open(dbFilePath)
-		selector = NewObjSelector(registry, objFilter)
+		selector = NewObjSelector(registry, cacheSize, objFilter)
 		r.root.selectors[name] = selector
 	} else if !reflect.DeepEqual(selector.filter, objFilter) {
 		panic(fmt.Sprintf("selector %s already has been created with a different filter", name))
