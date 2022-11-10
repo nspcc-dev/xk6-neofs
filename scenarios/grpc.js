@@ -116,7 +116,7 @@ export function obj_write() {
     const { payload, hash } = generator.genPayload(registry_enabled);
     const resp = grpc_client.put(container, headers, payload);
     if (!resp.success) {
-        console.log(resp.error);
+        console.log({cid: container, error: resp.error});
         return;
     }
 
@@ -133,7 +133,7 @@ export function obj_read() {
     const obj = obj_list[Math.floor(Math.random() * obj_list.length)];
     const resp = grpc_client.get(obj.container, obj.object)
     if (!resp.success) {
-        console.log(resp.error);
+        console.log({cid: obj.container, oid: obj.object, error: resp.error});
     }
 }
 
@@ -150,7 +150,7 @@ export function obj_delete() {
     const resp = grpc_client.delete(obj.c_id, obj.o_id);
     if (!resp.success) {
         // Log errors except (2052 - object already deleted)
-        console.log(resp.error);
+        console.log({cid: obj.c_id, oid: obj.o_id, error: resp.error});
         return;
     }
 
