@@ -2,11 +2,10 @@
 
 import argparse
 import json
-import os
-import shlex
-import uuid
 from concurrent.futures import ProcessPoolExecutor
-from subprocess import check_output, CalledProcessError, STDOUT
+
+from helpers.cmd import random_payload
+from helpers.aws_cli import create_bucket, upload_object
 
 parser = argparse.ArgumentParser()
 
@@ -15,8 +14,9 @@ parser.add_argument('--buckets', help='Number of buckets to create.')
 parser.add_argument('--out', help='JSON file with output.')
 parser.add_argument('--preload_obj', help='Number of pre-loaded objects.')
 parser.add_argument('--endpoint', help='S3 Gateway address.')
-parser.add_argument('--update', help='True/False, False by default. Save existed buckets from target file (--out). New buckets will not be created.')
-parser.add_argument('--location', help='AWS location. Will be empty, if has not be declared.')
+parser.add_argument('--update', help='True/False, False by default. Save existed buckets from target file (--out). '
+                                     'New buckets will not be created.')
+parser.add_argument('--location', help='AWS location. Will be empty, if has not be declared.', default="")
 parser.add_argument('--versioning', help='True/False, False by default.')
 
 args = parser.parse_args()
@@ -38,7 +38,8 @@ def main():
         print(f"Create buckets: {args.buckets}")
 
         with ProcessPoolExecutor(max_workers=10) as executor:
-            buckets_runs = {executor.submit(create_bucket): _ for _ in range(int(args.buckets))}
+            buckets_runs = {executor.submit(create_bucket, args.endpoint, args.versioning,
+                                            args.location): _ for _ in range(int(args.buckets))}
 
         for run in buckets_runs:
             if run.result() is not None:
@@ -49,13 +50,14 @@ def main():
     print(f" > Buckets: {bucket_list}")
 
     print(f"Upload objects to each bucket: {args.preload_obj} ")
-    random_payload(payload_filepath)
+    random_payload(payload_filepath, args.size)
     print(" > Create random payload: Completed")
 
     for bucket in bucket_list:
         print(f" > Upload objects for bucket {bucket}")
         with ProcessPoolExecutor(max_workers=50) as executor:
-            objects_runs = {executor.submit(upload_object, bucket, payload_filepath): _ for _ in range(int(args.preload_obj))}
+            objects_runs = {executor.submit(upload_object, bucket, payload_filepath,
+                                            args.endpoint): _ for _ in range(int(args.preload_obj))}
 
         for run in objects_runs:
             if run.result() is not None:
@@ -72,69 +74,6 @@ def main():
     print(f"Result:")
     print(f" > Total Buckets has been created: {len(bucket_list)}.")
     print(f" > Total Objects has been created: {len(objects_struct)}.")
-
-
-def random_payload(payload_filepath):
-    with open('%s' % payload_filepath, 'w+b') as fout:
-        fout.write(os.urandom(1024 * int(args.size)))
-
-
-def execute_cmd(cmd_line):
-    args = shlex.split(cmd_line)
-    output = ""
-    try:
-        output = check_output(args, stderr=STDOUT).decode()
-        success = True
-
-    except CalledProcessError as e:
-        output = e.output.decode()
-        success = False
-
-    return output, success
-
-
-def create_bucket():
-    bucket_create_marker = False
-
-    location = ""
-    if args.location:
-        location = f"--create-bucket-configuration 'LocationConstraint={args.location}'"
-    bucket_name = str(uuid.uuid4())
-
-    cmd_line = f"aws --no-verify-ssl s3api create-bucket --bucket {bucket_name} --endpoint http://{args.endpoint} {location}"
-    cmd_line_ver = f"aws --no-verify-ssl s3api put-bucket-versioning --bucket {bucket_name} --versioning-configuration Status=Enabled --endpoint http://{args.endpoint} "
-
-    out, success = execute_cmd(cmd_line)
-
-    if not success:
-        if "succeeded and you already own it" in out:
-            bucket_create_marker = True
-        else:
-            print(f" > Bucket {bucket_name} has not been created.")
-    else:
-        bucket_create_marker = True
-        print(f"cmd: {cmd_line}")
-
-    if bucket_create_marker and args.versioning == "True":
-        out, success = execute_cmd(cmd_line_ver)
-        if not success:
-            print(f" > Bucket versioning has not been applied for bucket {bucket_name}.")
-        else:
-            print(f" > Bucket versioning has been applied.")
-
-    return bucket_name
-
-
-def upload_object(bucket, payload_filepath):
-    object_name = str(uuid.uuid4())
-
-    cmd_line = f"aws s3api put-object --bucket {bucket} --key {object_name} --body {payload_filepath} --endpoint http://{args.endpoint}"
-    out, success = execute_cmd(cmd_line)
-
-    if not success:
-        print(f" > Object {object_name} has not been uploaded.")
-    else:
-        return object_name
 
 
 if __name__ == "__main__":
