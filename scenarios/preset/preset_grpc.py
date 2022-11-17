@@ -2,10 +2,12 @@
 
 import argparse
 import json
-import os
-import shlex
+from argparse import Namespace
+
 from concurrent.futures import ProcessPoolExecutor
-from subprocess import check_output, CalledProcessError, STDOUT
+
+from helpers.cmd import random_payload
+from helpers.neofs_cli import create_container, upload_object
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--size', help='Upload objects size in kb')
@@ -15,12 +17,12 @@ parser.add_argument('--preload_obj', help='Number of pre-loaded objects')
 parser.add_argument(
     "--policy",
     help="Container placement policy",
-    default="REP 1 IN X CBF 1 SELECT 1 FROM * AS X"
+    default="REP 2 IN X CBF 2 SELECT 2 FROM * AS X"
 )
 parser.add_argument('--endpoint', help='Node address')
 parser.add_argument('--update', help='Save existed containers')
 
-args = parser.parse_args()
+args: Namespace = parser.parse_args()
 print(args)
 
 
@@ -37,10 +39,11 @@ def main():
     else:
         print(f"Create containers: {args.containers}")
         with ProcessPoolExecutor(max_workers=10) as executor:
-            containers_runs = {executor.submit(create_container): _ for _ in range(int(args.containers))}
+            containers_runs = {executor.submit(create_container, args.endpoint, args.policy): _ for _ in
+                               range(int(args.containers))}
 
         for run in containers_runs:
-            if run.result() is not None:
+            if run.result():
                 container_list.append(run.result())
 
         print("Create containers: Completed")
@@ -50,17 +53,17 @@ def main():
         return
 
     print(f"Upload objects to each container: {args.preload_obj} ")
-    random_payload(payload_filepath)
+    random_payload(payload_filepath, args.size)
     print(" > Create random payload: Completed")
 
     for container in container_list:
         print(f" > Upload objects for container {container}")
         with ProcessPoolExecutor(max_workers=50) as executor:
-            objects_runs = {executor.submit(upload_object, container, payload_filepath): _ for _ in
+            objects_runs = {executor.submit(upload_object, container, payload_filepath, args.endpoint): _ for _ in
                             range(int(args.preload_obj))}
 
         for run in objects_runs:
-            if run.result() is not None:
+            if run.result():
                 objects_struct.append({'container': container, 'object': run.result()})
         print(f" > Upload objects for container {container}: Completed")
 
@@ -74,66 +77,6 @@ def main():
     print(f"Result:")
     print(f" > Total Containers has been created: {len(container_list)}.")
     print(f" > Total Objects has been created: {len(objects_struct)}.")
-
-
-def random_payload(payload_filepath):
-    with open('%s' % payload_filepath, 'w+b') as fout:
-        fout.write(os.urandom(1024 * int(args.size)))
-
-
-def execute_cmd(cmd_line):
-    args = shlex.split(cmd_line)
-    output = ""
-    try:
-        output = check_output(args, stderr=STDOUT).decode()
-        success = True
-
-    except CalledProcessError as e:
-        output = e.output.decode()
-        success = False
-
-    return output, success
-
-
-def create_container():
-    cmd_line = f"neofs-cli --rpc-endpoint {args.endpoint} container create -g --policy '{args.policy}' --basic-acl public-read-write --await"
-    output, success = execute_cmd(cmd_line)
-
-    if not success:
-        print(f" > Container has not been created:\n{output}")
-    else:
-        try:
-            fst_str = output.split('\n')[0]
-        except Exception:
-            print(f"Got empty output: {output}")
-            return
-        splitted = fst_str.split(": ")
-        if len(splitted) != 2:
-            raise ValueError(f"no CID was parsed from command output: \t{fst_str}")
-
-        print(f"Created container: {splitted[1]}")
-
-        return splitted[1]
-
-
-def upload_object(container, payload_filepath):
-    object_name = ""
-    cmd_line = f"neofs-cli --rpc-endpoint {args.endpoint} object put -g --file {payload_filepath} --cid {container} --no-progress"
-    out, success = execute_cmd(cmd_line)
-
-    if not success:
-        print(f" > Object {object_name} has not been uploaded:\n{out}")
-    else:
-        try:
-            # taking second string from command output
-            snd_str = out.split('\n')[1]
-        except:
-            print(f"Got empty input: {out}")
-            return
-        splitted = snd_str.split(": ")
-        if len(splitted) != 2:
-            raise Exception(f"no OID was parsed from command output: \t{snd_str}")
-        return splitted[1]
 
 
 if __name__ == "__main__":
