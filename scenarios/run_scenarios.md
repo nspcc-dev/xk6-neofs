@@ -24,9 +24,11 @@ Examples of how to use these options are provided below for each scenario.
 The tests will use all pre-created containers for PUT operations and all pre-created objects for READ operations.
 
 ```shell
-$ ./scenarios/preset/preset_grpc.py --size 1024 --containers 1 --out grpc.json --endpoint host1:8080 --preload_obj 500
+$ ./scenarios/preset/preset_grpc.py --size 1024 --containers 1 --out grpc.json --endpoint host1:8080 --preload_obj 500 --policy "REP 2 IN X CBF 1 SELECT 2 FROM * AS X" 
 ```
-
+  * `--policy` - container policy. If parameter is missed, the default value is "REP 1 IN X CBF 1 SELECT 1 FROM * AS X".
+  * `--update` - container id. Specify the existing container id, if parameter is missed the new container will be created. 
+  
 2. Execute scenario with options:
 
 ```shell
@@ -51,7 +53,7 @@ $ ./scenarios/preset/preset_grpc.py --size 1024 --containers 1 --out grpc.json -
 2. Execute scenario with options:
 
 ```shell
-$ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=8192 -e READERS=10 -e WRITERS=20 -e REGISTRY_FILE=registry.bolt -e HTTP_ENDPOINTS=host1:8888,host2:8888 -e PREGEN_JSON=./grpc.json scenarios/http.js
+$ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=8192 -e READERS=10 -e WRITERS=20 -e REGISTRY_FILE=registry.bolt -e HTTP_ENDPOINTS=host1:8888,host2:8888 -e PREGEN_JSON=./../grpc.json scenarios/http.js
 ```
 
 Options (in addition to the common options):
@@ -62,7 +64,7 @@ Options (in addition to the common options):
 1. Create s3 credentials:
 
 ```shell
-$ neofs-s3-authmate issue-secret --wallet wallet.json --peer host1:8080 --gate-public-key 03d33a2cc7b8daaa5a3df3fccf065f7cf1fc6a3279efc161fcec512dcc0c1b2277 --gate-public-key 03ff0ad212e10683234442530bfd71d0bb18c3fbd6459aba768eacf158b0c359a2 --gate-public-key 033ae03ff30ed3b6665af69955562cfc0eae18d50e798ab31f054ee22e32fee993 --gate-public-key 02127c7498de0765d2461577c9d4f13f916eefd1884896183e6de0d9a85d17f2fb --bearer-rules rules.json  --container-placement-policy "REP 1 IN X CBF 1 SELECT 1 FROM * AS X"
+$ neofs-s3-authmate issue-secret --wallet wallet.json --peer host1:8080 --gate-public-key 03d33a2cc7b8daaa5a3df3fccf065f7cf1fc6a3279efc161fcec512dcc0c1b2277 --gate-public-key 03ff0ad212e10683234442530bfd71d0bb18c3fbd6459aba768eacf158b0c359a2 --gate-public-key 033ae03ff30ed3b6665af69955562cfc0eae18d50e798ab31f054ee22e32fee993 --gate-public-key 02127c7498de0765d2461577c9d4f13f916eefd1884896183e6de0d9a85d17f2fb --bearer-rules rules.json  --container-placement-policy "REP 1 IN X CBF 1 SELECT 1 FROM * AS X" --container-policy ./scenarios/files/policy.json
 
 Enter password for wallet.json > 
 {
@@ -80,13 +82,15 @@ Run `aws configure`.
 The tests will use all pre-created buckets for PUT operations and all pre-created objects for READ operations.
 
 ```shell
-$ ./scenarios/preset/preset_s3.py --size 1024 --buckets 1 --out s3.json --endpoint host1:8084 --preload_obj 500
+$ ./scenarios/preset/preset_s3.py --size 1024 --buckets 1 --out s3_1024kb.json --endpoint host1:8084 --preload_obj 500 --location load-1-1
 ```
+ * '--location' - specify the name of container policy (from policy.json file). It's important to run 'aws configure' each time when the policy file has been changed to pick up the latest policies. 
+
 
 3. Execute scenario with options:
 
 ```shell
-$ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=8192 -e READERS=20 -e WRITERS=20 -e DELETERS=30 -e DELETE_AGE=10 -e S3_ENDPOINTS=host1:8084,host2:8084 -e PREGEN_JSON=s3.json scenarios/s3.js
+$ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=1024 -e READERS=20 -e WRITERS=20 -e DELETERS=30 -e DELETE_AGE=10 -e S3_ENDPOINTS=host1:8084,host2:8084 -e PREGEN_JSON=./../s3_1024kb.json scenarios/s3.js -e REGISTRY_FILE=registry.bolt
 ```
 
 Options (in addition to the common options):
@@ -109,6 +113,8 @@ To verify stored objects execute scenario with options:
 Scenario picks up all objects in `created` status. If object is stored correctly, its' status will be changed into `verified`. If object does not exist or its' data is corrupted, then the status will be changed into `invalid`.
 Scenario ends as soon as all objects are checked or time limit is exceeded.
 
+ `Important  note` if you would like to run `VERIFY` more than one time, the `registry.bolt` file is changed after `VERIFY` is finished and run `VERIFY` against the same `registry.bolt` file will not cause verification. The workaround here is having the original `registry.bolt` file (that was created right after `LOAD` step) and specifying the copy of the original file in the `VERIFY` process. 
+ 
 Objects produced by HTTP scenario will be verified via gRPC endpoints.
 
 Options:
