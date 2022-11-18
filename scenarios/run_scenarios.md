@@ -121,3 +121,26 @@ Options:
   * `REGISTRY_FILE` - database file from which objects for verification should be read.
   * `SLEEP` - time interval (in seconds) between VU iterations.
   * `SELECTION_SIZE` - size of batch to select for deletion (default: 1000).
+
+## Verify preset 
+
+Check what all preset objects is in cluster and can be got:
+```
+./scenarios/preset/check_objects_in_preset.py --endpoint az:8080 --preset_file ./scenarios/presets/grpc_1Mb_c1_o100.json 
+```
+
+Options: 
+  * `--endpoint` - endpoint to get objects
+  * `--preset_file` - path to preset file
+
+Check what all objects in preset is compliance with container policy and get distribution of keys:
+```
+./scenarios/preset/check_policy_compliance.py --endpoints "az:8080,buky:8080,vedi:8080,glagoli:8080" --expected_copies 2 --preset_file "./scenarios/presets/grpc_10Mb_c100_o400.json"  
+```
+
+Options:
+  * `--endpoints` - list of all live endpoints in cluster (comma separated)
+  * `--preset_file` - path to preset file
+  * `--expected_copies` - amount of expected copies for each object
+  * `--max_workers` - amount of workers for check in parallel
+  * `--print_failed` - print failed objects to console
