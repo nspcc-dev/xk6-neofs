@@ -7,13 +7,13 @@ from helpers.neofs_cli import get_object
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--endpoint', help='Node address')
-parser.add_argument('--preset_json', help='JSON file path with preset')
+parser.add_argument('--preset_file', help='JSON file path with preset')
 
 args = parser.parse_args()
 
 
 def main():
-    with open(args.preset_json) as f:
+    with open(args.preset_file) as f:
         preset_text = f.read()
 
     preset = json.loads(preset_text)

@@ -2,8 +2,9 @@
 
 import argparse
 import json
-from argparse import Namespace
+import random
 
+from argparse import Namespace
 from concurrent.futures import ProcessPoolExecutor
 
 from helpers.cmd import random_payload
@@ -31,6 +32,8 @@ def main():
     objects_struct = []
     payload_filepath = '/tmp/data_file'
 
+    endpoints = args.endpoint.split(',')
+
     if args.update:
         # Open file
         with open(args.out) as f:
@@ -38,9 +41,9 @@ def main():
             container_list = data_json['containers']
     else:
         print(f"Create containers: {args.containers}")
-        with ProcessPoolExecutor(max_workers=10) as executor:
-            containers_runs = {executor.submit(create_container, args.endpoint, args.policy): _ for _ in
-                               range(int(args.containers))}
+        with ProcessPoolExecutor(max_workers=50) as executor:
+            containers_runs = {executor.submit(create_container, endpoints[random.randrange(len(endpoints))],
+                                               args.policy): _ for _ in range(int(args.containers))}
 
         for run in containers_runs:
             if run.result():
@@ -59,8 +62,8 @@ def main():
     for container in container_list:
         print(f" > Upload objects for container {container}")
         with ProcessPoolExecutor(max_workers=50) as executor:
-            objects_runs = {executor.submit(upload_object, container, payload_filepath, args.endpoint): _ for _ in
-                            range(int(args.preload_obj))}
+            objects_runs = {executor.submit(upload_object, container, payload_filepath,
+                              endpoints[random.randrange(len(endpoints))]): _ for _ in range(int(args.preload_obj))}
 
         for run in objects_runs:
             if run.result():

@@ -1,3 +1,5 @@
+import re
+
 from helpers.cmd import execute_cmd
 
 
@@ -29,17 +31,17 @@ def upload_object(container, payload_filepath, endpoint):
     object_name = ""
     cmd_line = f"neofs-cli --rpc-endpoint {endpoint} object put -g --file {payload_filepath} " \
                f"--cid {container} --no-progress"
-    out, success = execute_cmd(cmd_line)
+    output, success = execute_cmd(cmd_line)
 
     if not success:
-        print(f" > Object {object_name} has not been uploaded:\n{out}")
+        print(f" > Object {object_name} has not been uploaded:\n{output}")
         return False
     else:
         try:
             # taking second string from command output
-            snd_str = out.split('\n')[1]
+            snd_str = output.split('\n')[1]
         except Exception:
-            print(f"Got empty input: {out}")
+            print(f"Got empty input: {output}")
             return False
         splitted = snd_str.split(": ")
         if len(splitted) != 2:
@@ -51,11 +53,29 @@ def get_object(cid, oid, endpoint, out_filepath):
     cmd_line = f"neofs-cli object get -r {endpoint} -g --cid {cid} --oid {oid} " \
                f"--file {out_filepath}"
 
-    out, success = execute_cmd(cmd_line)
+    output, success = execute_cmd(cmd_line)
 
     if not success:
-        print(f" > Failed to get object {oid} from container {cid} \r\n"
-              f" > Error: {out}")
+        print(f" > Failed to get object {output} from container {cid} \r\n"
+              f" > Error: {output}")
         return False
 
     return True
+
+
+def search_object_by_id(cid, oid, endpoint, ttl=2):
+    cmd_line = f"neofs-cli object search --ttl {ttl} -r {endpoint} -g --cid {cid} --oid {oid}"
+
+    output, success = execute_cmd(cmd_line)
+
+    if not success:
+        print(f" > Failed to search object {oid} for container {cid} \r\n"
+              f" > Error: {output}")
+        return False
+
+    re_rst = re.search(r'Found (\d+) objects', output)
+
+    if not re_rst:
+        raise Exception("Failed to parce search results")
+
+    return re_rst.group(1)
