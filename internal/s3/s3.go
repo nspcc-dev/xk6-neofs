@@ -26,6 +26,7 @@ var (
 
 	objPutTotal, objPutFails, objPutDuration                   *metrics.Metric
 	objGetTotal, objGetFails, objGetDuration                   *metrics.Metric
+	objDeleteTotal, objDeleteFails, objDeleteDuration          *metrics.Metric
 	createBucketTotal, createBucketFails, createBucketDuration *metrics.Metric
 )
 
@@ -74,6 +75,10 @@ func (s *S3) Connect(endpoint string) (*Client, error) {
 	objGetTotal, _ = registry.NewMetric("aws_obj_get_total", metrics.Counter)
 	objGetFails, _ = registry.NewMetric("aws_obj_get_fails", metrics.Counter)
 	objGetDuration, _ = registry.NewMetric("aws_obj_get_duration", metrics.Trend, metrics.Time)
+
+	objDeleteTotal, _ = registry.NewMetric("aws_obj_delete_total", metrics.Counter)
+	objDeleteFails, _ = registry.NewMetric("aws_obj_delete_fails", metrics.Counter)
+	objDeleteDuration, _ = registry.NewMetric("aws_obj_delete_duration", metrics.Trend, metrics.Time)
 
 	createBucketTotal, _ = registry.NewMetric("aws_create_bucket_total", metrics.Counter)
 	createBucketFails, _ = registry.NewMetric("aws_create_bucket_fails", metrics.Counter)
