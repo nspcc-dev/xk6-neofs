@@ -72,14 +72,19 @@ func (c *Client) Put(bucket, key string, payload goja.ArrayBuffer) PutResponse {
 }
 
 func (c *Client) Delete(bucket, key string) DeleteResponse {
+	stats.Report(c.vu, objDeleteTotal, 1)
+	start := time.Now()
+
 	_, err := c.cli.DeleteObject(c.vu.Context(), &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
+		stats.Report(c.vu, objDeleteFails, 1)
 		return DeleteResponse{Success: false, Error: err.Error()}
 	}
 
+	stats.Report(c.vu, objDeleteDuration, metrics.D(time.Since(start)))
 	return DeleteResponse{Success: true}
 }
 

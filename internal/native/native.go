@@ -28,9 +28,10 @@ var (
 	_ modules.Instance = &Native{}
 	_ modules.Module   = &RootModule{}
 
-	objPutTotal, objPutFails, objPutDuration *metrics.Metric
-	objGetTotal, objGetFails, objGetDuration *metrics.Metric
-	cnrPutTotal, cnrPutFails, cnrPutDuration *metrics.Metric
+	objPutTotal, objPutFails, objPutDuration          *metrics.Metric
+	objGetTotal, objGetFails, objGetDuration          *metrics.Metric
+	objDeleteTotal, objDeleteFails, objDeleteDuration *metrics.Metric
+	cnrPutTotal, cnrPutFails, cnrPutDuration          *metrics.Metric
 )
 
 func init() {
@@ -115,6 +116,10 @@ func (n *Native) Connect(endpoint, hexPrivateKey string) (*Client, error) {
 	objGetTotal, _ = registry.NewMetric("neofs_obj_get_total", metrics.Counter)
 	objGetFails, _ = registry.NewMetric("neofs_obj_get_fails", metrics.Counter)
 	objGetDuration, _ = registry.NewMetric("neofs_obj_get_duration", metrics.Trend, metrics.Time)
+
+	objDeleteTotal, _ = registry.NewMetric("neofs_obj_delete_total", metrics.Counter)
+	objDeleteFails, _ = registry.NewMetric("neofs_obj_delete_fails", metrics.Counter)
+	objDeleteDuration, _ = registry.NewMetric("neofs_obj_delete_duration", metrics.Trend, metrics.Time)
 
 	cnrPutTotal, _ = registry.NewMetric("neofs_cnr_put_total", metrics.Counter)
 	cnrPutFails, _ = registry.NewMetric("neofs_cnr_put_fails", metrics.Counter)

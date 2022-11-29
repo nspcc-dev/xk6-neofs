@@ -137,6 +137,9 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 		panic(err)
 	}
 
+	stats.Report(c.vu, objDeleteTotal, 1)
+	start := time.Now()
+
 	var prm client.PrmObjectDelete
 	prm.ByID(cliObjectID)
 	prm.FromContainer(cliContainerID)
@@ -144,9 +147,11 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 
 	_, err = c.cli.ObjectDelete(c.vu.Context(), prm)
 	if err != nil {
+		stats.Report(c.vu, objDeleteFails, 1)
 		return DeleteResponse{Success: false, Error: err.Error()}
 	}
 
+	stats.Report(c.vu, objDeleteDuration, metrics.D(time.Since(start)))
 	return DeleteResponse{Success: true}
 }
 
