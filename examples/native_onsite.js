@@ -3,7 +3,7 @@ import native from 'k6/x/neofs/native';
 
 const payload = open('../go.sum', 'b');
 const container = "AjSxSNNXbJUDPqqKYm1VbFVDGCakbpUNH8aGjPmGAH3B"
-const neofs_cli = native.connect("s01.neofs.devenv:8080", "")
+const neofs_cli = native.connect("s01.neofs.devenv:8080", "", 0, 0)
 const neofs_obj = neofs_cli.onsite(container, payload)
 
 export const options = {
