@@ -45,10 +45,12 @@ xk6 build --with github.com/nspcc-dev/xk6-neofs=.
 Create native client with `connect` method. Arguments:
 - neofs storage node endpoint
 - hex encoded private key (empty value produces random key)
+- dial timeout in seconds (0 for the default value)
+- stream timeout in seconds (0 for the default value)
 
 ```js
 import native from 'k6/x/neofs/native';
-const neofs_cli = native.connect("s01.neofs.devenv:8080", "")
+const neofs_cli = native.connect("s01.neofs.devenv:8080", "", 0, 0)
 ```
 
 ### Methods
