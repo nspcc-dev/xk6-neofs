@@ -24,6 +24,7 @@ parser.add_argument(
 )
 parser.add_argument('--endpoint', help='Node address')
 parser.add_argument('--update', help='Save existed containers')
+parser.add_argument('--workers', type=int, help='Number of workers (default 50)', default=50)
 
 args: Namespace = parser.parse_args()
 print(args)
@@ -46,7 +47,7 @@ def main():
             container_list = data_json['containers']
     else:
         print(f"Create containers: {args.containers}")
-        with ProcessPoolExecutor(max_workers=50) as executor:
+        with ProcessPoolExecutor(max_workers=args.workers) as executor:
             containers_runs = {executor.submit(create_container, endpoints[random.randrange(len(endpoints))],
                                                args.policy, wallet, wallet_config): _ for _ in range(int(args.containers))}
 
@@ -66,7 +67,7 @@ def main():
 
     for container in container_list:
         print(f" > Upload objects for container {container}")
-        with ProcessPoolExecutor(max_workers=50) as executor:
+        with ProcessPoolExecutor(max_workers=args.workers) as executor:
             objects_runs = {executor.submit(upload_object, container, payload_filepath,
                               endpoints[random.randrange(len(endpoints))], wallet, wallet_config): _ for _ in range(int(args.preload_obj))}
 
