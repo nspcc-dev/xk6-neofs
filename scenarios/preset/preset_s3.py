@@ -18,6 +18,7 @@ parser.add_argument('--update', help='True/False, False by default. Save existed
                                      'New buckets will not be created.')
 parser.add_argument('--location', help='AWS location. Will be empty, if has not be declared.', default="")
 parser.add_argument('--versioning', help='True/False, False by default.')
+parser.add_argument('--workers', type=int, help='Number of workers (default 50)', default=50)
 
 args = parser.parse_args()
 print(args)
@@ -37,7 +38,7 @@ def main():
     else:
         print(f"Create buckets: {args.buckets}")
 
-        with ProcessPoolExecutor(max_workers=10) as executor:
+        with ProcessPoolExecutor(max_workers=args.workers) as executor:
             buckets_runs = {executor.submit(create_bucket, args.endpoint, args.versioning,
                                             args.location): _ for _ in range(int(args.buckets))}
 
@@ -55,7 +56,7 @@ def main():
 
     for bucket in bucket_list:
         print(f" > Upload objects for bucket {bucket}")
-        with ProcessPoolExecutor(max_workers=50) as executor:
+        with ProcessPoolExecutor(max_workers=args.workers) as executor:
             objects_runs = {executor.submit(upload_object, bucket, payload_filepath,
                                             args.endpoint): _ for _ in range(int(args.preload_obj))}
 
