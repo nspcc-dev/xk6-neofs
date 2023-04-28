@@ -1,6 +1,7 @@
 package native
 
 import (
+	"crypto/elliptic"
 	"fmt"
 	"math"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/session"
+	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/metrics"
 )
@@ -68,7 +70,7 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 
 	var prmInit client.PrmInit
 	prmInit.ResolveNeoFSFailures()
-	prmInit.SetDefaultPrivateKey(pk.PrivateKey)
+	prmInit.SetDefaultSigner(neofsecdsa.Signer(pk.PrivateKey))
 	cli.Init(prmInit)
 
 	var prmDial client.PrmDial
@@ -132,9 +134,14 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 	cnrPutFails, _ = registry.NewMetric("neofs_cnr_put_fails", metrics.Counter)
 	cnrPutDuration, _ = registry.NewMetric("neofs_cnr_put_duration", metrics.Trend, metrics.Time)
 
+	var ownerID user.ID
+	var pubKey = pk.PrivateKey.PublicKey
+	_ = user.IDFromKey(&ownerID, elliptic.MarshalCompressed(pubKey.Curve, pubKey.X, pubKey.Y)) // pubKey is a valid key, so this can't fail.
+
 	return &Client{
 		vu:      n.vu,
 		key:     pk.PrivateKey,
+		owner:   ownerID,
 		tok:     tok,
 		cli:     &cli,
 		bufsize: defaultBufferSize,

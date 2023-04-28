@@ -52,7 +52,7 @@ func (s *S3) Exports() modules.Exports {
 }
 
 func (s *S3) Connect(endpoint string, params map[string]string) (*Client, error) {
-	resolver := aws.EndpointResolverWithOptionsFunc(func(_, _ string, _ ...interface{}) (aws.Endpoint, error) {
+	resolver := aws.EndpointResolverWithOptionsFunc(func(_, _ string, _ ...any) (aws.Endpoint, error) {
 		return aws.Endpoint{
 			URL: endpoint,
 		}, nil

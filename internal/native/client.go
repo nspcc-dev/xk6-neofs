@@ -17,6 +17,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
+	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
@@ -33,6 +34,7 @@ type (
 	Client struct {
 		vu      modules.VU
 		key     ecdsa.PrivateKey
+		owner   user.ID
 		tok     session.Object
 		cli     *client.Client
 		bufsize int
@@ -95,13 +97,10 @@ func (c *Client) Put(containerID string, headers map[string]string, payload goja
 	tok := c.tok
 	tok.ForVerb(session.VerbObjectPut)
 	tok.BindContainer(cliContainerID)
-	err := tok.Sign(c.key)
+	err := tok.Sign(neofsecdsa.Signer(c.key))
 	if err != nil {
 		panic(err)
 	}
-
-	var owner user.ID
-	user.IDFromKey(&owner, c.key.PublicKey)
 
 	attrs := make([]object.Attribute, len(headers))
 	ind := 0
@@ -113,7 +112,7 @@ func (c *Client) Put(containerID string, headers map[string]string, payload goja
 
 	var o object.Object
 	o.SetContainerID(cliContainerID)
-	o.SetOwnerID(&owner)
+	o.SetOwnerID(&c.owner)
 	o.SetAttributes(attrs...)
 
 	resp, err := put(c.vu, c.bufsize, c.cli, &tok, &o, payload.Bytes())
@@ -132,7 +131,7 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 	tok.ForVerb(session.VerbObjectDelete)
 	tok.BindContainer(cliContainerID)
 	tok.LimitByObjects(cliObjectID)
-	err := tok.Sign(c.key)
+	err := tok.Sign(neofsecdsa.Signer(c.key))
 	if err != nil {
 		panic(err)
 	}
@@ -163,7 +162,7 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 	tok.ForVerb(session.VerbObjectGet)
 	tok.BindContainer(cliContainerID)
 	tok.LimitByObjects(cliObjectID)
-	err := tok.Sign(c.key)
+	err := tok.Sign(neofsecdsa.Signer(c.key))
 	if err != nil {
 		panic(err)
 	}
@@ -234,7 +233,7 @@ func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHa
 	tok.ForVerb(session.VerbObjectGet)
 	tok.BindContainer(cliContainerID)
 	tok.LimitByObjects(cliObjectID)
-	err := tok.Sign(c.key)
+	err := tok.Sign(neofsecdsa.Signer(c.key))
 	if err != nil {
 		panic(err)
 	}
@@ -270,11 +269,8 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 	var cnr container.Container
 	cnr.Init()
 
-	var usr user.ID
-	user.IDFromKey(&usr, c.key.PublicKey)
-
 	container.SetCreationTime(&cnr, time.Now())
-	cnr.SetOwner(usr)
+	cnr.SetOwner(c.owner)
 
 	if basicACLStr, ok := params["acl"]; ok {
 		var basicACL acl.Basic
@@ -359,16 +355,13 @@ func (c *Client) Onsite(containerID string, payload goja.ArrayBuffer) PreparedOb
 
 	cliContainerID := parseContainerID(containerID)
 
-	var owner user.ID
-	user.IDFromKey(&owner, c.key.PublicKey)
-
 	apiVersion := version.Current()
 
 	obj := object.New()
 	obj.SetVersion(&apiVersion)
 	obj.SetType(object.TypeRegular)
 	obj.SetContainerID(cliContainerID)
-	obj.SetOwnerID(&owner)
+	obj.SetOwnerID(&c.owner)
 	obj.SetPayloadSize(uint64(ln))
 	obj.SetCreationEpoch(epoch)
 
@@ -409,7 +402,7 @@ func (p PreparedObject) Put(headers map[string]string) PutResponse {
 	}
 	obj.SetID(id)
 
-	if err = object.CalculateAndSetSignature(p.key, &obj); err != nil {
+	if err = object.CalculateAndSetSignature(neofsecdsa.Signer(p.key), &obj); err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
 
