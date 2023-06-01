@@ -55,7 +55,7 @@ func (n *Native) Exports() modules.Exports {
 
 func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTimeout int) (*Client, error) {
 	var (
-		cli client.Client
+		cli *client.Client
 		pk  *keys.PrivateKey
 		err error
 	)
@@ -69,9 +69,11 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 	}
 
 	var prmInit client.PrmInit
-	prmInit.ResolveNeoFSFailures()
-	prmInit.SetDefaultSigner(neofsecdsa.Signer(pk.PrivateKey))
-	cli.Init(prmInit)
+	prmInit.SetDefaultSigner(neofsecdsa.SignerRFC6979(pk.PrivateKey))
+	cli, err = client.New(prmInit)
+	if err != nil {
+		return nil, fmt.Errorf("client creation: %w", err)
+	}
 
 	var prmDial client.PrmDial
 	prmDial.SetServerURI(endpoint)
@@ -143,7 +145,7 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 		key:     pk.PrivateKey,
 		owner:   ownerID,
 		tok:     tok,
-		cli:     &cli,
+		cli:     cli,
 		bufsize: defaultBufferSize,
 	}, nil
 }
