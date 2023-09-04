@@ -140,11 +140,9 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 	start := time.Now()
 
 	var prm client.PrmObjectDelete
-	prm.ByID(cliObjectID)
-	prm.FromContainer(cliContainerID)
 	prm.WithinSession(tok)
 
-	_, err = c.cli.ObjectDelete(c.vu.Context(), prm)
+	_, err = c.cli.ObjectDelete(c.vu.Context(), cliContainerID, cliObjectID, prm)
 	if err != nil {
 		stats.Report(c.vu, objDeleteFails, 1)
 		return DeleteResponse{Success: false, Error: err.Error()}
@@ -171,12 +169,10 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 	start := time.Now()
 
 	var prm client.PrmObjectGet
-	prm.ByID(cliObjectID)
-	prm.FromContainer(cliContainerID)
 	prm.WithinSession(tok)
 
 	var objSize = 0
-	err = get(c.cli, prm, c.vu.Context(), c.bufsize, func(data []byte) {
+	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.bufsize, func(data []byte) {
 		objSize += len(data)
 	})
 	if err != nil {
@@ -190,22 +186,24 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 }
 
 func get(
-	cli *client.Client,
-	prm client.PrmObjectGet,
 	ctx context.Context,
+	cli *client.Client,
+	containerID cid.ID,
+	objectID oid.ID,
+	prm client.PrmObjectGet,
 	bufSize int,
 	onDataChunk func(chunk []byte),
 ) error {
 	var buf = make([]byte, bufSize)
 
-	objectReader, err := cli.ObjectGetInit(ctx, prm)
+	objectReader, err := cli.ObjectGetInit(ctx, containerID, objectID, prm)
 	if err != nil {
 		return err
 	}
 
 	var o object.Object
 	if !objectReader.ReadHeader(&o) {
-		if _, err = objectReader.Close(); err != nil {
+		if err = objectReader.Close(); err != nil {
 			return err
 		}
 		return errors.New("can't read object header")
@@ -217,7 +215,7 @@ func get(
 		n, _ = objectReader.Read(buf)
 	}
 
-	_, err = objectReader.Close()
+	err = objectReader.Close()
 	if err != nil {
 		return err
 	}
@@ -239,12 +237,10 @@ func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHa
 	}
 
 	var prm client.PrmObjectGet
-	prm.ByID(cliObjectID)
-	prm.FromContainer(cliContainerID)
 	prm.WithinSession(tok)
 
 	hasher := sha256.New()
-	err = get(c.cli, prm, c.vu.Context(), c.bufsize, func(data []byte) {
+	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.bufsize, func(data []byte) {
 		hasher.Write(data)
 	})
 	if err != nil {
@@ -318,10 +314,8 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 	}
 
 	start := time.Now()
-	var prm client.PrmContainerPut
-	prm.SetContainer(cnr)
 
-	res, err := c.cli.ContainerPut(c.vu.Context(), prm)
+	contID, err := c.cli.ContainerPut(c.vu.Context(), cnr, client.PrmContainerPut{})
 	if err != nil {
 		return c.putCnrErrorResponse(err)
 	}
@@ -329,12 +323,12 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 	var wp waitParams
 	wp.setDefaults()
 
-	if err = c.waitForContainerPresence(c.vu.Context(), res.ID(), &wp); err != nil {
+	if err = c.waitForContainerPresence(c.vu.Context(), contID, &wp); err != nil {
 		return c.putCnrErrorResponse(err)
 	}
 
 	stats.Report(c.vu, cnrPutDuration, metrics.D(time.Since(start)))
-	return PutContainerResponse{Success: true, ContainerID: res.ID().EncodeToString()}
+	return PutContainerResponse{Success: true, ContainerID: contID.EncodeToString()}
 }
 
 func (c *Client) Onsite(containerID string, payload goja.ArrayBuffer) PreparedObject {
@@ -462,12 +456,10 @@ func put(vu modules.VU, bufSize int, cli *client.Client, tok *session.Object,
 }
 
 func parseNetworkInfo(ctx context.Context, cli *client.Client) (maxObjSize, epoch uint64, hhDisabled bool, err error) {
-	ni, err := cli.NetworkInfo(ctx, client.PrmNetworkInfo{})
+	ninfo, err := cli.NetworkInfo(ctx, client.PrmNetworkInfo{})
 	if err != nil {
 		return 0, 0, false, err
 	}
-
-	ninfo := ni.Info()
 
 	return ninfo.MaxObjectSize(), ninfo.CurrentEpoch(), ninfo.HomomorphicHashingDisabled(), err
 }
@@ -484,10 +476,7 @@ func (x *waitParams) setDefaults() {
 
 func (c *Client) waitForContainerPresence(ctx context.Context, cnrID cid.ID, wp *waitParams) error {
 	return waitFor(ctx, wp, func(ctx context.Context) bool {
-		var prm client.PrmContainerGet
-		prm.SetContainer(cnrID)
-
-		_, err := c.cli.ContainerGet(ctx, prm)
+		_, err := c.cli.ContainerGet(ctx, cnrID, client.PrmContainerGet{})
 		return err == nil
 	})
 }
