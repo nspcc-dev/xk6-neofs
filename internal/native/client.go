@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"strconv"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
 	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
-	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
@@ -34,6 +34,7 @@ type (
 	Client struct {
 		vu      modules.VU
 		key     ecdsa.PrivateKey
+		signer  user.Signer
 		owner   user.ID
 		tok     session.Object
 		cli     *client.Client
@@ -70,6 +71,7 @@ type (
 	PreparedObject struct {
 		vu      modules.VU
 		key     ecdsa.PrivateKey
+		signer  user.Signer
 		cli     *client.Client
 		bufsize int
 
@@ -97,7 +99,7 @@ func (c *Client) Put(containerID string, headers map[string]string, payload goja
 	tok := c.tok
 	tok.ForVerb(session.VerbObjectPut)
 	tok.BindContainer(cliContainerID)
-	err := tok.Sign(neofsecdsa.Signer(c.key))
+	err := tok.Sign(c.signer)
 	if err != nil {
 		panic(err)
 	}
@@ -115,7 +117,7 @@ func (c *Client) Put(containerID string, headers map[string]string, payload goja
 	o.SetOwnerID(&c.owner)
 	o.SetAttributes(attrs...)
 
-	resp, err := put(c.vu, c.bufsize, c.cli, &tok, &o, payload.Bytes())
+	resp, err := put(c.vu, c.bufsize, c.cli, &tok, c.signer, &o, payload.Bytes())
 	if err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
@@ -131,7 +133,7 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 	tok.ForVerb(session.VerbObjectDelete)
 	tok.BindContainer(cliContainerID)
 	tok.LimitByObjects(cliObjectID)
-	err := tok.Sign(neofsecdsa.Signer(c.key))
+	err := tok.Sign(c.signer)
 	if err != nil {
 		panic(err)
 	}
@@ -142,7 +144,7 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 	var prm client.PrmObjectDelete
 	prm.WithinSession(tok)
 
-	_, err = c.cli.ObjectDelete(c.vu.Context(), cliContainerID, cliObjectID, prm)
+	_, err = c.cli.ObjectDelete(c.vu.Context(), cliContainerID, cliObjectID, c.signer, prm)
 	if err != nil {
 		stats.Report(c.vu, objDeleteFails, 1)
 		return DeleteResponse{Success: false, Error: err.Error()}
@@ -160,7 +162,7 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 	tok.ForVerb(session.VerbObjectGet)
 	tok.BindContainer(cliContainerID)
 	tok.LimitByObjects(cliObjectID)
-	err := tok.Sign(neofsecdsa.Signer(c.key))
+	err := tok.Sign(c.signer)
 	if err != nil {
 		panic(err)
 	}
@@ -172,7 +174,7 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 	prm.WithinSession(tok)
 
 	var objSize = 0
-	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.bufsize, func(data []byte) {
+	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, c.bufsize, func(data []byte) {
 		objSize += len(data)
 	})
 	if err != nil {
@@ -191,22 +193,15 @@ func get(
 	containerID cid.ID,
 	objectID oid.ID,
 	prm client.PrmObjectGet,
+	signer user.Signer,
 	bufSize int,
 	onDataChunk func(chunk []byte),
 ) error {
 	var buf = make([]byte, bufSize)
 
-	objectReader, err := cli.ObjectGetInit(ctx, containerID, objectID, prm)
+	_, objectReader, err := cli.ObjectGetInit(ctx, containerID, objectID, signer, prm)
 	if err != nil {
 		return err
-	}
-
-	var o object.Object
-	if !objectReader.ReadHeader(&o) {
-		if err = objectReader.Close(); err != nil {
-			return err
-		}
-		return errors.New("can't read object header")
 	}
 
 	n, _ := objectReader.Read(buf)
@@ -231,7 +226,7 @@ func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHa
 	tok.ForVerb(session.VerbObjectGet)
 	tok.BindContainer(cliContainerID)
 	tok.LimitByObjects(cliObjectID)
-	err := tok.Sign(neofsecdsa.Signer(c.key))
+	err := tok.Sign(c.signer)
 	if err != nil {
 		panic(err)
 	}
@@ -240,7 +235,7 @@ func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHa
 	prm.WithinSession(tok)
 
 	hasher := sha256.New()
-	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.bufsize, func(data []byte) {
+	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, c.bufsize, func(data []byte) {
 		hasher.Write(data)
 	})
 	if err != nil {
@@ -265,7 +260,7 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 	var cnr container.Container
 	cnr.Init()
 
-	container.SetCreationTime(&cnr, time.Now())
+	cnr.SetCreationTime(time.Now())
 	cnr.SetOwner(c.owner)
 
 	if basicACLStr, ok := params["acl"]; ok {
@@ -291,7 +286,7 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 
 	containerName, hasName := params["name"]
 	if hasName {
-		container.SetName(&cnr, containerName)
+		cnr.SetName(containerName)
 	}
 
 	var err error
@@ -310,12 +305,12 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 		var domain container.Domain
 		domain.SetName(containerName)
 
-		container.WriteDomain(&cnr, domain)
+		cnr.WriteDomain(domain)
 	}
 
 	start := time.Now()
 
-	contID, err := c.cli.ContainerPut(c.vu.Context(), cnr, client.PrmContainerPut{})
+	contID, err := c.cli.ContainerPut(c.vu.Context(), cnr, c.signer, client.PrmContainerPut{})
 	if err != nil {
 		return c.putCnrErrorResponse(err)
 	}
@@ -370,6 +365,7 @@ func (c *Client) Onsite(containerID string, payload goja.ArrayBuffer) PreparedOb
 	return PreparedObject{
 		vu:      c.vu,
 		key:     c.key,
+		signer:  c.signer,
 		cli:     c.cli,
 		bufsize: c.bufsize,
 
@@ -390,17 +386,17 @@ func (p PreparedObject) Put(headers map[string]string) PutResponse {
 	}
 	obj.SetAttributes(attrs...)
 
-	id, err := object.CalculateID(&obj)
+	id, err := obj.CalculateID()
 	if err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
 	obj.SetID(id)
 
-	if err = object.CalculateAndSetSignature(neofsecdsa.Signer(p.key), &obj); err != nil {
+	if err = obj.Sign(p.signer); err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
 
-	_, err = put(p.vu, p.bufsize, p.cli, nil, &obj, p.payload)
+	_, err = put(p.vu, p.bufsize, p.cli, nil, p.signer, &obj, p.payload)
 	if err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
@@ -408,7 +404,7 @@ func (p PreparedObject) Put(headers map[string]string) PutResponse {
 	return PutResponse{Success: true, ObjectID: id.String()}
 }
 
-func put(vu modules.VU, bufSize int, cli *client.Client, tok *session.Object,
+func put(vu modules.VU, bufSize int, cli *client.Client, tok *session.Object, signer user.Signer,
 	hdr *object.Object, payload []byte) (*client.ResObjectPut, error) {
 	buf := make([]byte, bufSize)
 	rdr := bytes.NewReader(payload)
@@ -423,36 +419,28 @@ func put(vu modules.VU, bufSize int, cli *client.Client, tok *session.Object,
 		prm.WithinSession(*tok)
 	}
 
-	objectWriter, err := cli.ObjectPutInit(vu.Context(), prm)
+	objectWriter, err := cli.ObjectPutInit(vu.Context(), *hdr, signer, prm)
 	if err != nil {
 		stats.Report(vu, objPutFails, 1)
 		return nil, err
 	}
 
-	if !objectWriter.WriteHeader(*hdr) {
-		stats.Report(vu, objPutFails, 1)
-		_, err = objectWriter.Close()
-		return nil, err
-	}
-
-	n, _ := rdr.Read(buf)
-	for n > 0 {
-		if !objectWriter.WritePayloadChunk(buf[:n]) {
-			break
-		}
-		n, _ = rdr.Read(buf)
-	}
-
-	resp, err := objectWriter.Close()
+	_, err = io.CopyBuffer(objectWriter, rdr, buf)
 	if err != nil {
 		stats.Report(vu, objPutFails, 1)
-		return nil, err
+		return nil, fmt.Errorf("read payload chunk: %w", err)
+	}
+
+	if err = objectWriter.Close(); err != nil {
+		stats.Report(vu, objPutFails, 1)
+		return nil, fmt.Errorf("writer close: %w", err)
 	}
 
 	stats.ReportDataSent(vu, float64(sz))
 	stats.Report(vu, objPutDuration, metrics.D(time.Since(start)))
 
-	return resp, err
+	res := objectWriter.GetResult()
+	return &res, err
 }
 
 func parseNetworkInfo(ctx context.Context, cli *client.Client) (maxObjSize, epoch uint64, hhDisabled bool, err error) {
