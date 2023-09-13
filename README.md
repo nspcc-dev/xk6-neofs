@@ -17,25 +17,25 @@ To build a `k6` binary with this extension, first ensure you have the prerequisi
 - Go
 - Git
 
-1. Install `xk6` framework for extending `k6`:
-```shell
-go install go.k6.io/xk6/cmd/xk6@latest
-```
-
-2. Clone this repository
+1. Clone this repository
 ```shell
 git clone github.com/nspcc-dev/xk6-neofs
 cd xk6-neofs
 ```
 
+2. Install `xk6` framework for extending `k6`:
+```shell
+make install_xk6
+```
+
 3. Build the binary:
 ```shell
-xk6 build --with github.com/nspcc-dev/xk6-neofs=.
+make build
 ```
 
 4. Run k6:
 ```shell
-./k6 run test-script.js
+./xk6-neofs run test-script.js
 ```
 
 # API
