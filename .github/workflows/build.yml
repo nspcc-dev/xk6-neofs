@@ -1,0 +1,66 @@
+name: Build
+
+on:
+  pull_request:
+    branches:
+      - master
+    types: [ opened, synchronize ]
+    paths-ignore:
+      - '**/*.md'
+  push:
+    # Build for the master branch.
+    branches:
+      - master
+  release:
+    # Publish released commit as Docker `latest` and `git_revision` images.
+    types:
+      - published
+
+jobs:
+  build_cli:
+    name: Build CLI
+    runs-on: ${{matrix.os.name}}
+    strategy:
+      matrix:
+        os: [ { name: ubuntu-20.04, bin-name: linux }, { name: macos-12, bin-name: darwin } ]
+        arch: [ amd64, arm64 ]
+        exclude:
+          - os: { name: macos-12, bin-name: darwin }
+            arch: 'amd64'
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+          cache: true
+
+      - name: Update Go modules
+        run: go mod download -json
+
+      - name: Install xk6
+        run: make install_xk6
+
+      - name: Build CLI
+        run: make build
+        env:
+          GOARCH: ${{ matrix.arch }}
+
+      - name: Rename CLI binary
+        run: mv ./xk6-neofs* ./xk6-neofs-${{ matrix.os.bin-name }}-${{ matrix.arch }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: xk6-neofs-${{ matrix.os.bin-name }}-${{ matrix.arch }}
+          path: ./xk6-neofs*
+          if-no-files-found: error
+
+      - name: Attach binary to the release as an asset
+        if: ${{ github.event_name == 'release' }}
+        run: gh release upload ${{ github.event.release.tag_name }} ./xk6-neofs-${{ matrix.os.bin-name }}-${{ matrix.arch }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
