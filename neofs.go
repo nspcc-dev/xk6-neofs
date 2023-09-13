@@ -1,3 +1,4 @@
+//nolint:revive
 package xk6_neofs
 
 import (
