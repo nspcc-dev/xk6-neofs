@@ -1,4 +1,4 @@
-package xk6_neofs
+package xk6neofs
 
 import (
 	// In fact, xk6_neofs is a main module, but with different name. Leave a comment here to solve linter warning.
