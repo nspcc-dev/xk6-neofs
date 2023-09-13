@@ -3,7 +3,6 @@ package native
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -33,7 +32,6 @@ import (
 type (
 	Client struct {
 		vu      modules.VU
-		key     ecdsa.PrivateKey
 		signer  user.Signer
 		owner   user.ID
 		tok     session.Object
@@ -70,7 +68,6 @@ type (
 
 	PreparedObject struct {
 		vu      modules.VU
-		key     ecdsa.PrivateKey
 		signer  user.Signer
 		cli     *client.Client
 		bufsize int
@@ -364,7 +361,6 @@ func (c *Client) Onsite(containerID string, payload goja.ArrayBuffer) PreparedOb
 
 	return PreparedObject{
 		vu:      c.vu,
-		key:     c.key,
 		signer:  c.signer,
 		cli:     c.cli,
 		bufsize: c.bufsize,

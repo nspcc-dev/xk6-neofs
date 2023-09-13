@@ -139,7 +139,6 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 	return &Client{
 		vu:      n.vu,
 		signer:  signer,
-		key:     pk.PrivateKey,
 		owner:   signer.UserID(),
 		tok:     tok,
 		cli:     cli,
