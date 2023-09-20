@@ -27,7 +27,7 @@ const bucketName = "_object"
 // ObjectInfo represents information about neoFS object that has been created
 // via gRPC/HTTP/S3 API.
 type ObjectInfo struct {
-	Id          uint64    // Identifier in bolt DB
+	ID          uint64    // Identifier in bolt DB
 	CreatedAt   time.Time // UTC date&time when the object was created
 	CID         string    // Container ID in gRPC/HTTP
 	OID         string    // Object ID in gRPC/HTTP
@@ -71,7 +71,7 @@ func (o *ObjRegistry) AddObject(cid, oid, s3Bucket, s3Key, payloadHash string) e
 		}
 
 		object := ObjectInfo{
-			Id:          id,
+			ID:          id,
 			CreatedAt:   time.Now().UTC(),
 			CID:         cid,
 			OID:         oid,
@@ -80,12 +80,12 @@ func (o *ObjRegistry) AddObject(cid, oid, s3Bucket, s3Key, payloadHash string) e
 			PayloadHash: payloadHash,
 			Status:      statusCreated,
 		}
-		objectJson, err := json.Marshal(object)
+		objectJSON, err := json.Marshal(object)
 		if err != nil {
 			return err
 		}
 
-		return b.Put(encodeId(id), objectJson)
+		return b.Put(encodeID(id), objectJSON)
 	})
 }
 
@@ -96,7 +96,7 @@ func (o *ObjRegistry) SetObjectStatus(id uint64, newStatus string) error {
 			return err
 		}
 
-		objBytes := b.Get(encodeId(id))
+		objBytes := b.Get(encodeID(id))
 		if objBytes == nil {
 			return errors.New("object doesn't exist")
 		}
@@ -111,7 +111,7 @@ func (o *ObjRegistry) SetObjectStatus(id uint64, newStatus string) error {
 		if err != nil {
 			return err
 		}
-		return b.Put(encodeId(id), objBytes)
+		return b.Put(encodeID(id), objBytes)
 	})
 }
 
@@ -122,7 +122,7 @@ func (o *ObjRegistry) DeleteObject(id uint64) error {
 			return err
 		}
 
-		return b.Delete(encodeId(id))
+		return b.Delete(encodeID(id))
 	})
 }
 
@@ -131,12 +131,12 @@ func (o *ObjRegistry) Close() error {
 	return o.boltDB.Close()
 }
 
-func encodeId(id uint64) []byte {
+func encodeID(id uint64) []byte {
 	idBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(idBytes, id)
 	return idBytes
 }
 
-func decodeId(idBytes []byte) uint64 {
+func decodeID(idBytes []byte) uint64 {
 	return binary.BigEndian.Uint64(idBytes)
 }

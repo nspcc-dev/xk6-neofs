@@ -110,8 +110,8 @@ func (o *ObjSelector) selectLoop() {
 			if lastID == 0 {
 				keyBytes, objBytes = c.First()
 			} else {
-				keyBytes, objBytes = c.Seek(encodeId(lastID))
-				if keyBytes != nil && decodeId(keyBytes) == lastID {
+				keyBytes, objBytes = c.Seek(encodeID(lastID))
+				if keyBytes != nil && decodeID(keyBytes) == lastID {
 					keyBytes, objBytes = c.Next()
 				}
 			}
@@ -132,7 +132,7 @@ func (o *ObjSelector) selectLoop() {
 			}
 
 			if len(cache) > 0 {
-				lastID = cache[len(cache)-1].Id
+				lastID = cache[len(cache)-1].ID
 			}
 
 			return nil

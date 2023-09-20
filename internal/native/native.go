@@ -1,7 +1,6 @@
 package native
 
 import (
-	"crypto/elliptic"
 	"fmt"
 	"math"
 	"time"
@@ -68,8 +67,9 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 		return nil, fmt.Errorf("invalid key: %w", err)
 	}
 
+	signer := user.NewAutoIDSignerRFC6979(pk.PrivateKey)
+
 	var prmInit client.PrmInit
-	prmInit.SetDefaultSigner(neofsecdsa.SignerRFC6979(pk.PrivateKey))
 	cli, err = client.New(prmInit)
 	if err != nil {
 		return nil, fmt.Errorf("client creation: %w", err)
@@ -95,7 +95,7 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 	exp := uint64(math.MaxUint64)
 	var prmSessionCreate client.PrmSessionCreate
 	prmSessionCreate.SetExp(exp)
-	sessionResp, err := cli.SessionCreate(n.vu.Context(), prmSessionCreate)
+	sessionResp, err := cli.SessionCreate(n.vu.Context(), signer, prmSessionCreate)
 	if err != nil {
 		return nil, fmt.Errorf("dial endpoint: %w", err)
 	}
@@ -136,14 +136,10 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 	cnrPutFails, _ = registry.NewMetric("neofs_cnr_put_fails", metrics.Counter)
 	cnrPutDuration, _ = registry.NewMetric("neofs_cnr_put_duration", metrics.Trend, metrics.Time)
 
-	var ownerID user.ID
-	var pubKey = pk.PrivateKey.PublicKey
-	_ = user.IDFromKey(&ownerID, elliptic.MarshalCompressed(pubKey.Curve, pubKey.X, pubKey.Y)) // pubKey is a valid key, so this can't fail.
-
 	return &Client{
 		vu:      n.vu,
-		key:     pk.PrivateKey,
-		owner:   ownerID,
+		signer:  signer,
+		owner:   signer.UserID(),
 		tok:     tok,
 		cli:     cli,
 		bufsize: defaultBufferSize,

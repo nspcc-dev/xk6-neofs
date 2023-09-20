@@ -70,7 +70,7 @@ func (g *Generator) nextSlice() []byte {
 
 	// Shift the offset for the next call. If we've used our entire tail, then erase
 	// the buffer so that on the next call it is regenerated anew
-	g.offset += 1
+	g.offset++
 	if g.offset >= TailSize {
 		g.buf = nil
 		g.offset = 0
