@@ -42,7 +42,7 @@ type ObjectInfo struct {
 // connection to the database, there may be only one instance of object registry
 // per database file at a time.
 func NewObjRegistry(ctx context.Context, dbFilePath string) *ObjRegistry {
-	options := bbolt.Options{Timeout: 100 * time.Millisecond}
+	options := bbolt.Options{Timeout: 100 * time.Millisecond, NoSync: true}
 	boltDB, err := bbolt.Open(dbFilePath, os.ModePerm, &options)
 	if err != nil {
 		panic(err)
