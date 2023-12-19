@@ -114,7 +114,10 @@ func (c *Client) Put(containerID string, headers map[string]string, payload goja
 	o.SetOwnerID(&c.owner)
 	o.SetAttributes(attrs...)
 
-	resp, err := put(c.vu, c.bufsize, c.cli, &tok, c.signer, &o, payload.Bytes())
+	bPayload := payload.Bytes()
+	o.SetPayloadSize(uint64(len(bPayload)))
+
+	resp, err := put(c.vu, c.bufsize, c.cli, &tok, c.signer, &o, bPayload)
 	if err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
