@@ -174,7 +174,7 @@ func (c *Client) CreateBucket(bucket string, params map[string]string) CreateBuc
 		Bucket:                     aws.String(bucket),
 		ACL:                        types.BucketCannedACL(params["acl"]),
 		CreateBucketConfiguration:  bucketConfiguration,
-		ObjectLockEnabledForBucket: lockEnabled,
+		ObjectLockEnabledForBucket: &lockEnabled,
 	})
 	if err != nil {
 		stats.Report(c.vu, createBucketFails, 1)
