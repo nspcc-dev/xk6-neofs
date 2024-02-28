@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"math/rand"
-	"time"
 
 	"github.com/dop251/goja"
 	"go.k6.io/k6/js/modules"
@@ -35,10 +34,6 @@ type (
 // TailSize specifies number of extra random bytes in the buffer tail.
 const TailSize = 1024
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 func NewGenerator(vu modules.VU, size int) Generator {
 	if size <= 0 {
 		panic("size should be positive")
@@ -63,6 +58,7 @@ func (g *Generator) nextSlice() []byte {
 	if g.buf == nil {
 		// Allocate buffer with extra tail for sliding and populate it with random bytes
 		g.buf = make([]byte, g.size+TailSize)
+		//nolint:staticcheck
 		rand.Read(g.buf) // Per docs, err is always nil here
 	}
 
