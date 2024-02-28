@@ -27,12 +27,12 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
           cache: true
 
       - name: Update Go modules
@@ -47,7 +47,7 @@ jobs:
         run: mv ./xk6-neofs* ./xk6-neofs-${{ matrix.os.bin-name }}-${{ matrix.arch }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: xk6-neofs-${{ matrix.os.bin-name }}-${{ matrix.arch }}
           path: ./xk6-neofs*
