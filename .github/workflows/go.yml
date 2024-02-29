@@ -17,6 +17,11 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      - name: Set up Go from go.mod
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
