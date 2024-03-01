@@ -12,7 +12,7 @@ on:
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
 
   tests:
     name: Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         go_versions: [ '1.20', '1.21', '1.22' ]
