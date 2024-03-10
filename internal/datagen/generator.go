@@ -35,8 +35,8 @@ type (
 const TailSize = 1024
 
 func NewGenerator(vu modules.VU, size int) Generator {
-	if size <= 0 {
-		panic("size should be positive")
+	if size < 0 {
+		panic("size should not be negative")
 	}
 	return Generator{vu: vu, size: size, buf: nil, offset: 0}
 }
