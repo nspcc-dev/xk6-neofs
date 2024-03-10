@@ -13,18 +13,17 @@ def create_container(endpoint, policy, wallet_file, wallet_config):
         print(f" > Container has not been created:\n{output}")
         return False
     else:
-        try:
-            fst_str = output.split('\n')[0]
-        except Exception:
-            print(f"Got empty output: {output}")
-            return False
-        splitted = fst_str.split(": ")
-        if len(splitted) != 2:
-            raise ValueError(f"no CID was parsed from command output: \t{fst_str}")
+        # Regular expression to find the container ID, case-insensitive
+        pattern = r"container ID: ([A-Za-z0-9]{43,44})"
 
-        print(f"Created container: {splitted[1]}")
-
-        return splitted[1]
+        # Search for the pattern in the output text with case-insensitive flag
+        match = re.search(pattern, output, re.IGNORECASE)
+        if match:
+            container_id = match.group(1)
+            print(f"Created container: {container_id}")
+            return container_id
+        else:
+            raise ValueError(f"no CID was parsed from command output: \t{output}")
 
 
 def upload_object(container, payload_filepath, endpoint, wallet_file, wallet_config):
