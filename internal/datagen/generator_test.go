@@ -20,10 +20,11 @@ func TestGenerator(t *testing.T) {
 		})
 	})
 
-	t.Run("fails on zero size", func(t *testing.T) {
-		require.Panics(t, func() {
-			_ = NewGenerator(vu, 0)
-		})
+	t.Run("creates slice of zero size", func(t *testing.T) {
+		size := 0
+		g := NewGenerator(vu, size)
+		slice := g.nextSlice()
+		require.Len(t, slice, size)
 	})
 
 	t.Run("creates slice of specified size", func(t *testing.T) {
