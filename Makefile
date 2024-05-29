@@ -2,7 +2,7 @@
 
 export GOBIN ?= $(shell pwd)/bin
 BINARY=xk6-neofs
-XK6_VERSION=0.9.2
+XK6_VERSION=0.11.0
 VERSION ?= $(shell git describe --tags --match "v*" --abbrev=8 2>/dev/null | sed -r 's,^v([0-9]+\.[0-9]+)\.([0-9]+)(-.*)?$$,\1 \2 \3,' | while read mm patch suffix; do if [ -z "$$suffix" ]; then echo $$mm.$$patch; else patch=`expr $$patch + 1`; echo $$mm.$${patch}-pre$$suffix; fi; done)
 LDFLAGS:=-s -w -X 'go.k6.io/k6/lib/consts.VersionDetails=xk6-neofs-$(VERSION)'
 
