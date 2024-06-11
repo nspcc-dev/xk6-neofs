@@ -9,8 +9,6 @@ import (
 	_ "github.com/nspcc-dev/xk6-neofs/internal/registry"
 	// In fact, xk6_neofs is a main module, but with different name. Leave a comment here to solve linter warning.
 	_ "github.com/nspcc-dev/xk6-neofs/internal/s3"
-	// In fact, xk6_neofs is a main module, but with different name. Leave a comment here to solve linter warning.
-	_ "github.com/nspcc-dev/xk6-neofs/internal/tree"
 	"go.k6.io/k6/js/modules"
 )
 
