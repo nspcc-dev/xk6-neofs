@@ -323,6 +323,63 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 	return PutContainerResponse{Success: true, ContainerID: contID.EncodeToString()}
 }
 
+type Filter struct {
+	Key       string
+	Operation string
+	Value     string
+}
+
+// Search searches for the objects in container that satisfies provided filters.
+// Returns number of found objects.
+func (c *Client) Search(cnrString string, filtersJS []Filter) (int, error) {
+	var cID cid.ID
+	err := cID.DecodeString(cnrString)
+	if err != nil {
+		return 0, fmt.Errorf("reading container ID: %w", err)
+	}
+
+	var op object.SearchMatchType
+	var filters object.SearchFilters
+	for _, flt := range filtersJS {
+		if !op.DecodeString(flt.Operation) {
+			return 0, fmt.Errorf("unknown filter operation: %s", flt.Operation)
+		}
+
+		filters.AddFilter(flt.Key, flt.Value, op)
+	}
+
+	var prm client.PrmObjectSearch
+	prm.SetFilters(filters)
+
+	start := time.Now()
+
+	r, err := c.cli.ObjectSearchInit(c.vu.Context(), cID, c.signer, prm)
+	if err != nil {
+		return 0, fmt.Errorf("search stream initialization: %w", err)
+	}
+	defer func() {
+		_ = r.Close()
+	}()
+
+	var objsNum int
+	err = r.Iterate(func(_ oid.ID) bool {
+		objsNum++
+		return false
+	})
+	if err != nil {
+		return 0, fmt.Errorf("reading search results: %w", err)
+	}
+
+	var relativeTime time.Duration
+	if objsNum > 0 {
+		relativeTime = time.Since(start) / time.Duration(objsNum)
+	}
+
+	stats.Report(c.vu, objSearchDurationRelative, metrics.D(relativeTime))
+
+	return objsNum, nil
+}
+
 func (c *Client) Onsite(containerID string, payload goja.ArrayBuffer) PreparedObject {
 	maxObjectSize, epoch, hhDisabled, err := parseNetworkInfo(c.vu.Context(), c.cli)
 	if err != nil {

@@ -33,6 +33,7 @@ var (
 	objGetTotal, objGetFails, objGetDuration          *metrics.Metric
 	objDeleteTotal, objDeleteFails, objDeleteDuration *metrics.Metric
 	cnrPutTotal, cnrPutFails, cnrPutDuration          *metrics.Metric
+	objSearchDurationRelative                         *metrics.Metric
 )
 
 func init() {
@@ -135,6 +136,8 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 	cnrPutTotal, _ = registry.NewMetric("neofs_cnr_put_total", metrics.Counter)
 	cnrPutFails, _ = registry.NewMetric("neofs_cnr_put_fails", metrics.Counter)
 	cnrPutDuration, _ = registry.NewMetric("neofs_cnr_put_duration", metrics.Trend, metrics.Time)
+
+	objSearchDurationRelative, _ = registry.NewMetric("neofs_search_duration_relative", metrics.Trend, metrics.Time)
 
 	return &Client{
 		vu:      n.vu,
