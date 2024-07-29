@@ -33,7 +33,7 @@ print(args)
 def main():
     container_list = []
     objects_struct = []
-    payload_filepath = '/tmp/data_file'
+    payload_filepath = '/tmp/data_file_' + args.size + 'k'
 
     endpoints = args.endpoint.split(',')
 
