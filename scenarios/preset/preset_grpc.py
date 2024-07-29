@@ -6,6 +6,7 @@ import random
 
 from argparse import Namespace
 from concurrent.futures import ProcessPoolExecutor
+from os.path import expanduser
 
 from helpers.cmd import random_payload
 from helpers.neofs_cli import create_container, upload_object
@@ -33,7 +34,7 @@ print(args)
 def main():
     container_list = []
     objects_struct = []
-    payload_filepath = '/tmp/data_file_' + args.size + 'k'
+    payload_filepath = expanduser("~") + '/data_file_' + args.size + 'k'
 
     endpoints = args.endpoint.split(',')
 
