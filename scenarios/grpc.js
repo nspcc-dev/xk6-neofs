@@ -175,13 +175,16 @@ export function handleSummary(data) {
     const result_format = (__ENV.RESULT_FORMAT || 'not_set');
     const c1 = ~~((data.metrics.data_received.values.rate || '0')/1024/1024);
     const c2 = ~~((data.metrics.data_sent.values.rate || '0')/1024/1024);
-    const c3 = ~~(data.metrics.neofs_obj_get_total && data.metrics.neofs_obj_get_total.values.rate || '0');
+    const e3 = (data.metrics.neofs_obj_get_fails && data.metrics.neofs_obj_get_fails.values.rate || '0');
+    const c3 = ~~((data.metrics.neofs_obj_get_total && data.metrics.neofs_obj_get_total.values.rate || '0') - e3);
     const c4 = ~~(data.metrics.neofs_obj_get_duration && data.metrics.neofs_obj_get_duration.values.avg || '0');
     const c5 = ~~(data.metrics.neofs_obj_get_duration && data.metrics.neofs_obj_get_duration.values["p(95)"] || '0');
-    const c6 = ~~(data.metrics.neofs_obj_put_total && data.metrics.neofs_obj_put_total.values.rate || '0');
+    const e6 = (data.metrics.neofs_obj_put_fails && data.metrics.neofs_obj_put_fails.values.rate || '0');
+    const c6 = ~~((data.metrics.neofs_obj_put_total && data.metrics.neofs_obj_put_total.values.rate || '0') - e6);
     const c7 = ~~(data.metrics.neofs_obj_put_duration && data.metrics.neofs_obj_put_duration.values.avg || '0');
     const c8 = ~~(data.metrics.neofs_obj_put_duration && data.metrics.neofs_obj_put_duration.values["p(95)"] || '0');
-    const c9 = ~~(data.metrics.neofs_obj_delete_total && data.metrics.neofs_obj_delete_total.values.rate || '0');
+    const e9 = (data.metrics.neofs_obj_delete_fails && data.metrics.neofs_obj_delete_fails.values.rate || '0');
+    const c9 = ~~((data.metrics.neofs_obj_delete_total && data.metrics.neofs_obj_delete_total.values.rate || '0') - e9);
     const c10 = ~~(data.metrics.neofs_obj_delete_duration && data.metrics.neofs_obj_delete_duration.values.avg || '0');
     const c11 = ~~(data.metrics.neofs_obj_delete_duration && data.metrics.neofs_obj_delete_duration.values["p(95)"] || '0');
     
