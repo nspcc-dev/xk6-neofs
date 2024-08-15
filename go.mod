@@ -9,7 +9,7 @@ require (
 	github.com/dop251/goja v0.0.0-20240220182346-e401ed450204
 	github.com/google/uuid v1.6.0
 	github.com/nspcc-dev/neo-go v0.106.0
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.11.0.20240412100141-cf16796f1ac3
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.12
 	github.com/nspcc-dev/tzhash v1.8.0
 	github.com/stretchr/testify v1.9.0
 	go.etcd.io/bbolt v1.3.9
