@@ -52,13 +52,7 @@ func (s *S3) Exports() modules.Exports {
 }
 
 func (s *S3) Connect(endpoint string, params map[string]string) (*Client, error) {
-	resolver := aws.EndpointResolverWithOptionsFunc(func(_, _ string, _ ...any) (aws.Endpoint, error) {
-		return aws.Endpoint{
-			URL: endpoint,
-		}, nil
-	})
-
-	cfg, err := config.LoadDefaultConfig(s.vu.Context(), config.WithEndpointResolverWithOptions(resolver))
+	cfg, err := config.LoadDefaultConfig(s.vu.Context())
 	if err != nil {
 		return nil, fmt.Errorf("configuration error: %w", err)
 	}
@@ -78,6 +72,7 @@ func (s *S3) Connect(endpoint string, params map[string]string) (*Client, error)
 	}
 
 	cli := s3.NewFromConfig(cfg, func(options *s3.Options) {
+		options.BaseEndpoint = aws.String(endpoint)
 		// use 'domain/bucket/key' instead of default 'bucket.domain/key' scheme
 		options.UsePathStyle = true
 		// do not retry failed requests, by default client does up to 3 retry

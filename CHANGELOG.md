@@ -9,6 +9,7 @@ This document outlines major changes between releases.
 ### Fixed
 
 ### Changed
+- Go 1.21+ is required to build now (#61)
 
 ## [0.1.2] - 2024-03-11
 
