@@ -46,7 +46,7 @@ func TestGenerator(t *testing.T) {
 	t.Run("keeps generating slices after consuming entire tail", func(t *testing.T) {
 		g := NewGenerator(vu, 1000)
 		initialSlice := g.nextSlice()
-		for i := 0; i < TailSize; i++ {
+		for range TailSize {
 			g.nextSlice()
 		}
 		// After we looped around our tail and returned to the beginning we should have a
