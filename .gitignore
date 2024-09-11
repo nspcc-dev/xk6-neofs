@@ -2,3 +2,4 @@ k6
 xk6-neofs
 *.bolt
 presets
+.golangci.yml
