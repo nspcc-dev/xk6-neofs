@@ -1,35 +1,29 @@
 #!/usr/bin/python3
 
 import argparse
-import json
 import random
+import json
 
-from argparse import Namespace
 from concurrent.futures import ProcessPoolExecutor
 from os.path import expanduser
-
 from helpers.cmd import random_payload
 from helpers.neofs_cli import create_container, upload_object
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--size', help='Upload objects size in kb')
-parser.add_argument('--containers', help='Number of containers to create')
-parser.add_argument('--out', help='JSON file with output')
-parser.add_argument('--preload_obj', help='Number of pre-loaded objects')
+args = parser.parse_args()
+
+parser.add_argument('--size', help='Upload objects size in kb.')
+parser.add_argument('--containers', help='Number of containers to create.')
+parser.add_argument('--out', help='JSON file with output.')
+parser.add_argument('--preload_obj', help='Number of pre-loaded objects.')
+parser.add_argument('--policy', help='Container placement policy', default='REP 2 IN X CBF 2 SELECT 2 FROM * AS X')
+parser.add_argument('--endpoint', help='Node address.')
+parser.add_argument('--update', help='New containers will not be created. True/False, False by default.', default=false)
+parser.add_argument('--workers', type=int, help='Number of workers (default 50).', default=50)
 parser.add_argument('--wallet', help='Wallet file path')
 parser.add_argument('--config', help='Wallet config file path')
-parser.add_argument(
-    "--policy",
-    help="Container placement policy",
-    default="REP 2 IN X CBF 2 SELECT 2 FROM * AS X"
-)
-parser.add_argument('--endpoint', help='Node address')
-parser.add_argument('--update', help='Save existed containers')
-parser.add_argument('--workers', type=int, help='Number of workers (default 50)', default=50)
 
-args: Namespace = parser.parse_args()
 print(args)
-
 
 def main():
     container_list = []
@@ -38,9 +32,6 @@ def main():
 
     endpoints = args.endpoint.split(',')
 
-    wallet = args.wallet
-    wallet_config = args.config
-
     if args.update:
         # Open file
         with open(args.out) as f:
@@ -48,9 +39,9 @@ def main():
             container_list = data_json['containers']
     else:
         print(f"Create containers: {args.containers}")
+
         with ProcessPoolExecutor(max_workers=args.workers) as executor:
-            containers_runs = {executor.submit(create_container, endpoints[random.randrange(len(endpoints))],
-                                               args.policy, wallet, wallet_config): _ for _ in range(int(args.containers))}
+            containers_runs = {executor.submit(create_container, endpoints[random.randrange(len(endpoints))], args.policy, args.wallet, args.config): _ for _ in range(int(args.containers))}
 
         for run in containers_runs:
             if run.result():
@@ -69,8 +60,7 @@ def main():
     for container in container_list:
         print(f" > Upload objects for container {container}")
         with ProcessPoolExecutor(max_workers=args.workers) as executor:
-            objects_runs = {executor.submit(upload_object, container, payload_filepath,
-                              endpoints[random.randrange(len(endpoints))], wallet, wallet_config): _ for _ in range(int(args.preload_obj))}
+            objects_runs = {executor.submit(upload_object, container, payload_filepath, endpoints[random.randrange(len(endpoints))], args.wallet, args.config): _ for _ in range(int(args.preload_obj))}
 
         for run in objects_runs:
             if run.result():
