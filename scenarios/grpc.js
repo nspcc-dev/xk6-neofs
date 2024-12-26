@@ -187,10 +187,12 @@ export function handleSummary(data) {
     const c9 = ~~((data.metrics.neofs_obj_delete_total && data.metrics.neofs_obj_delete_total.values.rate || '0') - e9);
     const c10 = ~~(data.metrics.neofs_obj_delete_duration && data.metrics.neofs_obj_delete_duration.values.avg || '0');
     const c11 = ~~(data.metrics.neofs_obj_delete_duration && data.metrics.neofs_obj_delete_duration.values["p(95)"] || '0');
-    
+    const c12 = ~~(data.metrics.iteration_duration && data.metrics.iteration_duration.values.avg || '0');
+    const c13 = ~~(data.metrics.iteration_duration && data.metrics.iteration_duration.values["p(95)"] || '0');
+            
     if (result_format == 'terse') {    
         return {
-            stdout: `${neo_ver};${test_type};${run_id};${test_id};${size_id};${vu_qty};${host_id};${run_id}_${test_id}_${size_id}k_${vu_qty}vu_${neo_ver};${c1};${c2};${c3};${c4};${c5};${c6};${c7};${c8};${c9};${c10};${c11}\n`
+            stdout: `${neo_ver};${test_type};${run_id};${test_id};${size_id};${vu_qty};${host_id};${run_id}_${test_id}_${size_id}k_${vu_qty}vu_${neo_ver};${c1};${c2};${c3};${c4};${c5};${c6};${c7};${c8};${c9};${c10};${c11};${c12};${c13}\n`
         };
     }
 }
