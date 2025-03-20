@@ -15,7 +15,7 @@ This document outlines major changes between releases.
 ## [0.1.2] - 2024-03-11
 
 ### Added
-- Support for zero-size objects for upload (#80) 
+- Support for zero-size objects for upload (#80)
 
 ### Changed
 - `bbolt`: Disabled syncing the DB in the object registry (#67)
