@@ -10,6 +10,7 @@ This document outlines major changes between releases.
 
 ### Changed
 - Go 1.21+ is required to build now (#61)
+- Replaced `math/rand.Read` with `math/rand/v2.ChaCha8.Read`
 
 ## [0.1.2] - 2024-03-11
 

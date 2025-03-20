@@ -2,8 +2,10 @@ package datagen
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
-	"math/rand"
+	"math/rand/v2"
+	"time"
 
 	"github.com/dop251/goja"
 	"go.k6.io/k6/js/modules"
@@ -58,8 +60,13 @@ func (g *Generator) nextSlice() []byte {
 	if g.buf == nil {
 		// Allocate buffer with extra tail for sliding and populate it with random bytes
 		g.buf = make([]byte, g.size+TailSize)
+
+		var seed [32]byte
+		binary.LittleEndian.PutUint64(seed[:], uint64(time.Now().UnixNano()))
+		chaCha8 := rand.NewChaCha8(seed)
+
 		//nolint:staticcheck
-		rand.Read(g.buf) // Per docs, err is always nil here
+		_, _ = chaCha8.Read(g.buf) // Per docs, err is always nil here
 	}
 
 	result := g.buf[g.offset : g.offset+g.size]
