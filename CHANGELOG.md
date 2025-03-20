@@ -9,8 +9,34 @@ This document outlines major changes between releases.
 ### Fixed
 
 ### Changed
-- Go 1.21+ is required to build now (#61)
+
+### Updated
+
+## [0.2.0] - 2025-03-20
+
+### Added
+- 'Search' operation test (#91)
+- darwin/arm64 binaries (#96)
+- Terce result output (#93)
+
+### Fixed
+- Concurrent data generation (#93)
+
+### Changed
+- Go 1.23+ is required to build now (#61, #97, #103)
 - Replaced `math/rand.Read` with `math/rand/v2.ChaCha8.Read`
+
+### Updated
+- google.golang.org/protobuf dependency to 1.33.0 (#83)
+- golang.org/x/net dependency to 0.23.0 (#84)
+- xk6 version to 0.11.0 (#87)
+- k6 version to 0.51.0 (#87)
+- NeoFS SDK dependency to RC13 (#95, #103)
+- NeoGo dependency to 0.108.1 (#95, #103)
+- github.com/nspcc-dev/tzhash dependency to 1.8.2 (#95, #103)
+- github.com/aws/aws-sdk-go-v2 dependency to 1.36.3 (#95, #103)
+- go.etcd.io/bbolt dependency to 1.3.11 (#95, #103)
+- golang.org/x/crypto dependency to 0.31.0 (#100)
 
 ## [0.1.2] - 2024-03-11
 
@@ -30,4 +56,5 @@ This document outlines major changes between releases.
 Please refer to [GitHub releases](https://github.com/nspcc-dev/xk6-neofs/releases/) for older releases.
 
 [0.1.2]: https://github.com/nspcc-dev/xk6-neofs/compare/v0.1.1...v0.1.2
-[Unreleased]: https://github.com/nspcc-dev/xk6-neofs/compare/v0.1.2...master
+[0.2.0]: https://github.com/nspcc-dev/xk6-neofs/compare/v0.1.2...v0.2.0
+[Unreleased]: https://github.com/nspcc-dev/xk6-neofs/compare/v0.2.0...master
