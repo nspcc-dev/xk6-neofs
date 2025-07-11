@@ -72,6 +72,7 @@ func (s *S3) Connect(endpoint string, params map[string]string) (*Client, error)
 	}
 
 	cli := s3.NewFromConfig(cfg, func(options *s3.Options) {
+		options.DisableLogOutputChecksumValidationSkipped = true
 		options.BaseEndpoint = aws.String(endpoint)
 		// use 'domain/bucket/key' instead of default 'bucket.domain/key' scheme
 		options.UsePathStyle = true
