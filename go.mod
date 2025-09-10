@@ -10,8 +10,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/nspcc-dev/neo-go v0.108.1
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.13
-	github.com/nspcc-dev/tzhash v1.8.2
-	github.com/stretchr/testify v1.10.0
+	github.com/nspcc-dev/tzhash v1.8.3
+	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.3.11
 	go.k6.io/k6 v0.51.0
 )
@@ -73,7 +73,7 @@ require (
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/net v0.32.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241202173237-19429a94021a // indirect

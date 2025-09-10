@@ -12,6 +12,7 @@ This document outlines major changes between releases.
 - Go 1.24+ is required to build now (#101)
 
 ### Updated
+- github.com/nspcc-dev/tzhash v1.8.2 => v1.8.3 (#101)
 
 ## [0.2.0] - 2025-03-20
 
