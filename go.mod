@@ -12,7 +12,7 @@ require (
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.14
 	github.com/nspcc-dev/tzhash v1.8.3
 	github.com/stretchr/testify v1.11.1
-	go.etcd.io/bbolt v1.3.11
+	go.etcd.io/bbolt v1.4.3
 	go.k6.io/k6 v0.57.0
 )
 

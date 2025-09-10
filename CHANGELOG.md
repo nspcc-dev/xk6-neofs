@@ -18,6 +18,7 @@ This document outlines major changes between releases.
 - github.com/aws/aws-sdk-go-v2/config v1.29.9 => v1.31.7 (#101)
 - github.com/aws/aws-sdk-go-v2/service/s3 v1.78.2 => v1.88.0 (#101)
 - go.k6.io/k6 v0.51.0 => v0.57.0 (#101)
+- go.etcd.io/bbolt v1.3.11 => v1.4.3 (#101)
 
 ## [0.2.0] - 2025-03-20
 
