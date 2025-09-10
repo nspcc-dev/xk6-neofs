@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/nspcc-dev/neofs-sdk-go/checksum"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
@@ -90,7 +90,7 @@ func (c *Client) SetBufferSize(size int) {
 	}
 }
 
-func (c *Client) Put(containerID string, headers map[string]string, payload goja.ArrayBuffer) PutResponse {
+func (c *Client) Put(containerID string, headers map[string]string, payload sobek.ArrayBuffer) PutResponse {
 	cliContainerID := parseContainerID(containerID)
 
 	tok := c.tok
@@ -380,7 +380,7 @@ func (c *Client) Search(cnrString string, filtersJS []Filter) (int, error) {
 	return objsNum, nil
 }
 
-func (c *Client) Onsite(containerID string, payload goja.ArrayBuffer) PreparedObject {
+func (c *Client) Onsite(containerID string, payload sobek.ArrayBuffer) PreparedObject {
 	maxObjectSize, epoch, hhDisabled, err := parseNetworkInfo(c.vu.Context(), c.cli)
 	if err != nil {
 		panic(err)

@@ -3,7 +3,7 @@ package datagen
 import (
 	"testing"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.k6.io/k6/js/modulestest"
@@ -11,7 +11,7 @@ import (
 
 func TestGenerator(t *testing.T) {
 	vu := &modulestest.VU{
-		RuntimeField: goja.New(),
+		RuntimeField: sobek.New(),
 	}
 
 	t.Run("fails on negative size", func(t *testing.T) {
