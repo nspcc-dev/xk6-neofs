@@ -135,8 +135,8 @@ github.com/nspcc-dev/hrw/v2 v2.0.3 h1:GUIitIiDpAaQat9SZccp7XVAuwtqaM40+uZ9D8Q4A8
 github.com/nspcc-dev/hrw/v2 v2.0.3/go.mod h1:VWlFSGGPcHG1abuIDJb5u83tIF2EqOatC8Z7svZmgWQ=
 github.com/nspcc-dev/neo-go v0.108.1 h1:XbtNtDL7O8G1B70WmlPcFXA3fsBGOgXzHxQVfBh6Yv0=
 github.com/nspcc-dev/neo-go v0.108.1/go.mod h1:DlISaevW5zhfzg2KgCxtR/m8wQObPuht03kEXSf0g2w=
-github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.13 h1:q1ne/4d10NuHSqs+fA5XVVBRJ9jSap4cjrsxYzNvYZA=
-github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.13/go.mod h1:ycdDlPq8Wy+w5ePCmCfbHuEWQXbP7ZjBL5rj3QDiiM0=
+github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.14 h1:Q0Zbu91VXckoaeNyIrQh3r/9xNnBneqBeID5FPXLmJo=
+github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.14/go.mod h1:j/NUu5iOGFkOVYM42XoC1X9DZD0/y89Pws++w5vxtQk=
 github.com/nspcc-dev/rfc6979 v0.2.3 h1:QNVykGZ3XjFwM/88rGfV3oj4rKNBy+nYI6jM7q19hDI=
 github.com/nspcc-dev/rfc6979 v0.2.3/go.mod h1:q3sCL1Ed7homjqYK8KmFSzEmm+7Ngyo7PePbZanhaDE=
 github.com/nspcc-dev/tzhash v1.8.3 h1:EWJMOL/ppdqNBvkKjHECljusopcsNu4i4kH8KctTv10=
@@ -214,8 +214,8 @@ golang.org/x/net v0.0.0-20200520004742-59133d7f0dd7/go.mod h1:qpuaurCH72eLCgpAm/
 golang.org/x/net v0.0.0-20201021035429-f5854403a974/go.mod h1:sp8m0HH+o8qH0wwXwYZr8TS3Oi6o0r6Gce1SSxlDquU=
 golang.org/x/net v0.0.0-20210226172049-e18ecbb05110/go.mod h1:m0MpNAwzfU5UDzcl9v0D8zg8gWTRqZa9RBIspLL5mdg=
 golang.org/x/net v0.0.0-20220722155237-a158d28d115b/go.mod h1:XRhObCWvk6IyKnWLug+ECip1KBveYUHfp+8e9klMJ9c=
-golang.org/x/net v0.32.0 h1:ZqPmj8Kzc+Y6e0+skZsuACbx+wzMgo5MQsJh9Qd6aYI=
-golang.org/x/net v0.32.0/go.mod h1:CwU0IoeOlnQQWJ6ioyFrfRuomB8GKF6KbYXZVyeXNfs=
+golang.org/x/net v0.33.0 h1:74SYHlV8BIgHIFC/LrYkOGIwL19eTYXQ5wc6TBuO36I=
+golang.org/x/net v0.33.0/go.mod h1:HXLR5J+9DxmrqMwG9qjGCxZ+zKXxBru04zlTvWlWuN4=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=

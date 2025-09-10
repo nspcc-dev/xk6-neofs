@@ -9,7 +9,7 @@ require (
 	github.com/dop251/goja v0.0.0-20240220182346-e401ed450204
 	github.com/google/uuid v1.6.0
 	github.com/nspcc-dev/neo-go v0.108.1
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.13
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.14
 	github.com/nspcc-dev/tzhash v1.8.3
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.3.11
@@ -72,7 +72,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.1.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
-	golang.org/x/net v0.32.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.5.0 // indirect

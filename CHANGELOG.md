@@ -13,6 +13,7 @@ This document outlines major changes between releases.
 
 ### Updated
 - github.com/nspcc-dev/tzhash v1.8.2 => v1.8.3 (#101)
+- github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.13 => v1.0.0-rc.14 (#101)
 
 ## [0.2.0] - 2025-03-20
 
