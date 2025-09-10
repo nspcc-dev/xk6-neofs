@@ -11,7 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"github.com/nspcc-dev/xk6-neofs/internal/stats"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/metrics"
@@ -49,7 +49,7 @@ type (
 	}
 )
 
-func (c *Client) Put(bucket, key string, payload goja.ArrayBuffer) PutResponse {
+func (c *Client) Put(bucket, key string, payload sobek.ArrayBuffer) PutResponse {
 	rdr := bytes.NewReader(payload.Bytes())
 	sz := rdr.Size()
 

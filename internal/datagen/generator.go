@@ -7,7 +7,7 @@ import (
 	"math/rand/v2"
 	"time"
 
-	"github.com/dop251/goja"
+	"github.com/grafana/sobek"
 	"go.k6.io/k6/js/modules"
 )
 
@@ -28,7 +28,7 @@ type (
 	}
 
 	GenPayloadResponse struct {
-		Payload goja.ArrayBuffer
+		Payload sobek.ArrayBuffer
 		Hash    string
 	}
 )
