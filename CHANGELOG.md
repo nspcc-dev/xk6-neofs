@@ -16,6 +16,7 @@ This document outlines major changes between releases.
 - github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.13 => v1.0.0-rc.14 (#101)
 - github.com/aws/aws-sdk-go-v2 v1.36.3 => v1.39.0 (#101)
 - github.com/aws/aws-sdk-go-v2/config v1.29.9 => v1.31.7 (#101)
+- github.com/aws/aws-sdk-go-v2/service/s3 v1.78.2 => v1.88.0 (#101)
 
 ## [0.2.0] - 2025-03-20
 
