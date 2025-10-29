@@ -2,7 +2,7 @@
 
 import argparse
 import json
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from helpers.cmd import random_payload
 from helpers.aws_cli import create_bucket, upload_object
@@ -38,11 +38,11 @@ def main():
     else:
         print(f"Create buckets: {args.buckets}")
 
-        with ProcessPoolExecutor(max_workers=args.workers) as executor:
-            buckets_runs = {executor.submit(create_bucket, args.endpoint, args.versioning,
-                                            args.location): _ for _ in range(int(args.buckets))}
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            buckets_runs = [executor.submit(create_bucket, args.endpoint, args.versioning,
+                                            args.location) for _ in range(int(args.buckets))]
 
-        for run in buckets_runs:
+        for run in as_completed(buckets_runs):
             if run.result() is not None:
                 bucket_list.append(run.result())
 
@@ -56,11 +56,11 @@ def main():
 
     for bucket in bucket_list:
         print(f" > Upload objects for bucket {bucket}")
-        with ProcessPoolExecutor(max_workers=args.workers) as executor:
-            objects_runs = {executor.submit(upload_object, bucket, payload_filepath,
-                                            args.endpoint): _ for _ in range(int(args.preload_obj))}
+        with ThreadPoolExecutor(max_workers=args.workers) as executor:
+            objects_runs = [executor.submit(upload_object, bucket, payload_filepath,
+                                            args.endpoint) for _ in range(int(args.preload_obj))]
 
-        for run in objects_runs:
+        for run in as_completed(objects_runs):
             if run.result() is not None:
                 objects_struct.append({'bucket': bucket, 'object': run.result()})
         print(f" > Upload objects for bucket {bucket}: Completed")
