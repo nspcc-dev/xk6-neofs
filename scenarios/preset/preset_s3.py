@@ -61,7 +61,7 @@ def main():
                                             args.endpoint) for _ in range(int(args.preload_obj))]
 
         for run in as_completed(objects_runs):
-            if run.result() is not None:
+            if run.result():
                 objects_struct.append({'bucket': bucket, 'object': run.result()})
         print(f" > Upload objects for bucket {bucket}: Completed")
 
