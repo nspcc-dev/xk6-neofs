@@ -1,4 +1,5 @@
 import uuid
+from time import sleep
 
 from helpers.cmd import execute_cmd
 
@@ -37,14 +38,22 @@ def create_bucket(endpoint, versioning, location):
 
 
 def upload_object(bucket, payload_filepath, endpoint):
+    MAX_RETRIES_NUMBER = 5
+    DELAY_AFTER_FAILURE = 1 # seconds
+
     object_name = str(uuid.uuid4())
 
     cmd_line = f"aws s3api put-object --bucket {bucket} --key {object_name} " \
                f"--body {payload_filepath} --endpoint http://{endpoint}"
-    out, success = execute_cmd(cmd_line)
+    for i in range(MAX_RETRIES_NUMBER):
+        out, success = execute_cmd(cmd_line)
 
-    if not success:
-        print(f" > Object {object_name} has not been uploaded.")
-        return False
-    else:
-        return object_name
+        if not success:
+            print(f" > Object {object_name} has not been uploaded ({i+1} attempt), retrying after {DELAY_AFTER_FAILURE}s...")
+            sleep(DELAY_AFTER_FAILURE)
+            continue
+        else:
+            return object_name
+
+    print(f" > Object {object_name} has not been uploaded after {MAX_RETRIES_NUMBER} tries.")
+    return False
