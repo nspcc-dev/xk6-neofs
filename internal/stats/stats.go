@@ -11,6 +11,7 @@ func Report(vu modules.VU, metric *metrics.Metric, value float64) {
 	metrics.PushIfNotDone(vu.Context(), vu.State().Samples, metrics.Sample{
 		TimeSeries: metrics.TimeSeries{
 			Metric: metric,
+			Tags:   vu.State().Tags.GetCurrentValues().Tags,
 		},
 		Time:  time.Now(),
 		Value: value,
