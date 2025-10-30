@@ -111,7 +111,7 @@ func (c *Client) Put(containerID string, headers map[string]string, payload sobe
 
 	var o object.Object
 	o.SetContainerID(cliContainerID)
-	o.SetOwnerID(&c.owner)
+	o.SetOwner(c.owner)
 	o.SetAttributes(attrs...)
 
 	resp, err := put(c.vu, c.bufsize, c.cli, &tok, c.signer, &o, payload.Bytes())
@@ -404,16 +404,16 @@ func (c *Client) Onsite(containerID string, payload sobek.ArrayBuffer) PreparedO
 	obj.SetVersion(&apiVersion)
 	obj.SetType(object.TypeRegular)
 	obj.SetContainerID(cliContainerID)
-	obj.SetOwnerID(&c.owner)
+	obj.SetOwner(c.owner)
 	obj.SetPayloadSize(uint64(ln))
 	obj.SetCreationEpoch(epoch)
+	obj.SetPayloadChecksum(object.CalculatePayloadChecksum(data))
 
-	var sha, hh checksum.Checksum
-	sha.SetSHA256(sha256.Sum256(data))
-	obj.SetPayloadChecksum(sha)
 	if !hhDisabled {
-		hh.SetTillichZemor(tz.Sum(data))
-		obj.SetPayloadHomomorphicHash(hh)
+		hh := tz.New()
+		hh.Write(data)
+
+		obj.SetPayloadHomomorphicHash(checksum.NewFromHash(checksum.TillichZemor, hh))
 	}
 
 	return PreparedObject{
