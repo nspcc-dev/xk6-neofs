@@ -93,7 +93,7 @@ func (c *Client) Get(bucket, key string) GetResponse {
 	start := time.Now()
 
 	var objSize = 0
-	err := get(c.cli, bucket, key, func(chunk []byte) {
+	err := get(c.vu.Context(), c.cli, bucket, key, func(chunk []byte) {
 		objSize += len(chunk)
 	})
 	if err != nil {
@@ -107,6 +107,7 @@ func (c *Client) Get(bucket, key string) GetResponse {
 }
 
 func get(
+	ctx context.Context,
 	c *s3.Client,
 	bucket string,
 	key string,
@@ -114,7 +115,7 @@ func get(
 ) error {
 	var buf = make([]byte, 4*1024)
 
-	obj, err := c.GetObject(context.Background(), &s3.GetObjectInput{
+	obj, err := c.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
@@ -136,7 +137,7 @@ func get(
 
 func (c *Client) VerifyHash(bucket, key, expectedHash string) VerifyHashResponse {
 	hasher := sha256.New()
-	err := get(c.cli, bucket, key, func(data []byte) {
+	err := get(c.vu.Context(), c.cli, bucket, key, func(data []byte) {
 		hasher.Write(data)
 	})
 	if err != nil {
