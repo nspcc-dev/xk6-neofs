@@ -16,7 +16,9 @@ const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 
 // Select random S3 endpoint for current VU
 const s3_endpoints = __ENV.S3_ENDPOINTS.split(',');
-const s3_endpoint = s3_endpoints[Math.floor(Math.random() * s3_endpoints.length)];
+const endpoint_to_use = __VU % s3_endpoints.length
+const s3_endpoint = s3_endpoints[endpoint_to_use];
+console.log(`VU ID: ${__VU}, S3 endpoint in use: ${s3_endpoint}`);
 const s3_client = s3.connect(`http://${s3_endpoint}`);
 
 const registry_enabled = !!__ENV.REGISTRY_FILE;
