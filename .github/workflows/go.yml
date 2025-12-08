@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04, windows-2022, macos-14]
+        os: [ubuntu-latest, windows-2022, macos-14]
         go: [ '1.24', '1.25' ]
         exclude:
           # Only latest Go version for Windows and MacOS.
@@ -28,7 +28,7 @@ jobs:
           - os: macos-14
             go: '1.24'
           # Exclude latest Go version for Ubuntu as Coverage uses it.
-          - os: ubuntu-22.04
+          - os: ubuntu-latest
             go: '1.24'
       fail-fast: false
     steps:
@@ -46,7 +46,7 @@ jobs:
 
   cover:
     name: Coverage
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     env:
       CGO_ENABLED: 1
