@@ -400,11 +400,9 @@ func (c *Client) Onsite(containerID string, payload sobek.ArrayBuffer) PreparedO
 
 	apiVersion := version.Current()
 
-	obj := object.New()
+	obj := object.New(cliContainerID, c.owner)
 	obj.SetVersion(&apiVersion)
 	obj.SetType(object.TypeRegular)
-	obj.SetContainerID(cliContainerID)
-	obj.SetOwner(c.owner)
 	obj.SetPayloadSize(uint64(ln))
 	obj.SetCreationEpoch(epoch)
 	obj.SetPayloadChecksum(object.CalculatePayloadChecksum(data))

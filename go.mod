@@ -8,8 +8,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.0
 	github.com/google/uuid v1.6.0
 	github.com/grafana/sobek v0.0.0-20250723111835-dd8a13f0d439
-	github.com/nspcc-dev/neo-go v0.113.0
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.15
+	github.com/nspcc-dev/neo-go v0.114.0
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.16.0.20260130135659-48d746d584cf
+	github.com/nspcc-dev/tzhash v1.8.3
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.4.3
 	go.k6.io/k6 v1.3.0
@@ -55,7 +56,6 @@ require (
 	github.com/mstoykov/k6-taskqueue-lib v0.1.3 // indirect
 	github.com/nspcc-dev/hrw/v2 v2.0.4 // indirect
 	github.com/nspcc-dev/rfc6979 v0.2.4 // indirect
-	github.com/nspcc-dev/tzhash v1.8.3 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/serenize/snaker v0.0.0-20201027110005-a7ad2135616e // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
@@ -71,9 +71,9 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.8.0 // indirect
 	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
-	golang.org/x/net v0.44.0 // indirect
-	golang.org/x/sys v0.36.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/time v0.13.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250908214217-97024824d090 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250922171735-9219d122eba9 // indirect
