@@ -13,7 +13,7 @@ This document outlines major changes between releases.
 
 ### Updated
 - github.com/nspcc-dev/tzhash v1.8.2 => v1.8.3 (#101)
-- github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.13 => v1.0.0-rc.16.0.20260130135659-48d746d584cf (#110, #120)
+- github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.13 => v1.0.0-rc.17 (#110, #120, #122)
 - github.com/aws/aws-sdk-go-v2 v1.36.3 => v1.39.0 (#101)
 - github.com/aws/aws-sdk-go-v2/config v1.29.9 => v1.31.7 (#101)
 - github.com/aws/aws-sdk-go-v2/service/s3 v1.78.2 => v1.88.0 (#101)
