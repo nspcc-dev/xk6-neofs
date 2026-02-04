@@ -9,7 +9,18 @@ This document outlines major changes between releases.
 ### Fixed
 
 ### Changed
+
+### Updated
+
+## [0.2.1] - 2026-02-04
+
+### Fixed
+- Checksum warnings (#107)
+- panic in S3 test (#111)
+
+### Changed
 - Go 1.24+ is required to build now (#101)
+- More fair load distribution (#112)
 
 ### Updated
 - github.com/nspcc-dev/tzhash v1.8.2 => v1.8.3 (#101)
@@ -65,4 +76,5 @@ Please refer to [GitHub releases](https://github.com/nspcc-dev/xk6-neofs/release
 
 [0.1.2]: https://github.com/nspcc-dev/xk6-neofs/compare/v0.1.1...v0.1.2
 [0.2.0]: https://github.com/nspcc-dev/xk6-neofs/compare/v0.1.2...v0.2.0
-[Unreleased]: https://github.com/nspcc-dev/xk6-neofs/compare/v0.2.0...master
+[0.2.1]: https://github.com/nspcc-dev/xk6-neofs/compare/v0.2.0...v0.2.1
+[Unreleased]: https://github.com/nspcc-dev/xk6-neofs/compare/v0.2.1...master
