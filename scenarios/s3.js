@@ -11,6 +11,7 @@ const obj_list = new SharedArray('obj_list', function () {
 const bucket_list = new SharedArray('bucket_list', function () {
     return JSON.parse(open(__ENV.PREGEN_JSON)).buckets;
 });
+const bucket = bucket_list[__VU % bucket_list.length]
 
 const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 
@@ -18,7 +19,7 @@ const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 const s3_endpoints = __ENV.S3_ENDPOINTS.split(',');
 const endpoint_to_use = __VU % s3_endpoints.length
 const s3_endpoint = s3_endpoints[endpoint_to_use];
-console.log(`VU ID: ${__VU}, S3 endpoint in use: ${s3_endpoint}`);
+console.log(`VU ID: ${__VU}, bucket: ${bucket}; S3 endpoint in use: ${s3_endpoint}`);
 const s3_client = s3.connect(`http://${s3_endpoint}`);
 
 const registry_enabled = !!__ENV.REGISTRY_FILE;
@@ -110,7 +111,6 @@ export function obj_write() {
     }
 
     const key = __ENV.OBJ_NAME || uuidv4();
-    const bucket = bucket_list[Math.floor(Math.random() * bucket_list.length)];
 
     const { payload, hash } = generator.genPayload(registry_enabled);
     const resp = s3_client.put(bucket, key, payload);
