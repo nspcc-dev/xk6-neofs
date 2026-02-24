@@ -8,7 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.0
 	github.com/google/uuid v1.6.0
 	github.com/grafana/sobek v0.0.0-20250723111835-dd8a13f0d439
-	github.com/nspcc-dev/neo-go v0.116.0
+	github.com/nspcc-dev/neo-go v0.117.0
 	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17
 	github.com/nspcc-dev/tzhash v1.8.3
 	github.com/stretchr/testify v1.11.1
