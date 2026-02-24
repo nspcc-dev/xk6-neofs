@@ -9,6 +9,7 @@ This document outlines major changes between releases.
 ### Fixed
 
 ### Changed
+- Go 1.25+ is required to build now (#108)
 
 ### Updated
 
