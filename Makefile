@@ -33,3 +33,8 @@ format:
 	@gofmt -s -w ./
 	@echo "⇒ Processing goimports check"
 	@goimports -w ./
+
+# Prettify code
+modernize:
+	@echo "⇒ Processing modernize check"
+	@go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@latest -fix ./...
