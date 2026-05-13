@@ -8,9 +8,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3
 	github.com/google/uuid v1.6.0
 	github.com/grafana/sobek v0.0.0-20260121195222-d8d9202018c5
-	github.com/nspcc-dev/neo-go v0.117.0
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17
-	github.com/nspcc-dev/tzhash v1.8.4
+	github.com/nspcc-dev/neo-go v0.118.0
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.18.0.20260425074442-9bd9eff5dffb
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.4.3
 	go.k6.io/k6 v1.6.1
@@ -38,7 +37,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/decred/dcrd/crypto/ripemd160 v1.0.2 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/evanw/esbuild v0.27.2 // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -58,6 +57,7 @@ require (
 	github.com/mstoykov/k6-taskqueue-lib v0.1.3 // indirect
 	github.com/nspcc-dev/hrw/v2 v2.0.4 // indirect
 	github.com/nspcc-dev/rfc6979 v0.2.4 // indirect
+	github.com/nspcc-dev/tzhash v1.8.4 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/serenize/snaker v0.0.0-20201027110005-a7ad2135616e // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect

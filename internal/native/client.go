@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/grafana/sobek"
-	"github.com/nspcc-dev/neofs-sdk-go/checksum"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
 	"github.com/nspcc-dev/neofs-sdk-go/container"
 	"github.com/nspcc-dev/neofs-sdk-go/container/acl"
@@ -23,7 +22,6 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/session"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/nspcc-dev/neofs-sdk-go/version"
-	"github.com/nspcc-dev/tzhash/tz"
 	"github.com/nspcc-dev/xk6-neofs/internal/stats"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/metrics"
@@ -381,7 +379,7 @@ func (c *Client) Search(cnrString string, filtersJS []Filter) (int, error) {
 }
 
 func (c *Client) Onsite(containerID string, payload sobek.ArrayBuffer) PreparedObject {
-	maxObjectSize, epoch, hhDisabled, err := parseNetworkInfo(c.vu.Context(), c.cli)
+	maxObjectSize, epoch, err := parseNetworkInfo(c.vu.Context(), c.cli)
 	if err != nil {
 		panic(err)
 	}
@@ -406,13 +404,6 @@ func (c *Client) Onsite(containerID string, payload sobek.ArrayBuffer) PreparedO
 	obj.SetPayloadSize(uint64(ln))
 	obj.SetCreationEpoch(epoch)
 	obj.SetPayloadChecksum(object.CalculatePayloadChecksum(data))
-
-	if !hhDisabled {
-		hh := tz.New()
-		hh.Write(data)
-
-		obj.SetPayloadHomomorphicHash(checksum.NewFromHash(checksum.TillichZemor, hh))
-	}
 
 	return PreparedObject{
 		vu:      c.vu,
@@ -494,13 +485,13 @@ func put(vu modules.VU, bufSize int, cli *client.Client, tok *session.Object, si
 	return &res, err
 }
 
-func parseNetworkInfo(ctx context.Context, cli *client.Client) (maxObjSize, epoch uint64, hhDisabled bool, err error) {
+func parseNetworkInfo(ctx context.Context, cli *client.Client) (maxObjSize, epoch uint64, err error) {
 	ninfo, err := cli.NetworkInfo(ctx, client.PrmNetworkInfo{})
 	if err != nil {
-		return 0, 0, false, err
+		return 0, 0, err
 	}
 
-	return ninfo.MaxObjectSize(), ninfo.CurrentEpoch(), ninfo.HomomorphicHashingDisabled(), err
+	return ninfo.MaxObjectSize(), ninfo.CurrentEpoch(), err
 }
 
 type waitParams struct {
