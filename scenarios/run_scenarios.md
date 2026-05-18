@@ -2,9 +2,9 @@
 
 # How to execute scenarios
 
-## Common options for gRPC, HTTP, S3 scenarios:
+## Common options for gRPC, HTTP, S3, Morph scenarios:
 
-Scenarios `grpc.js`, `http.js` and `s3.js` support the following options:
+Scenarios `grpc.js`, `http.js`, `s3.js` and `morph.js` support the following options:
   * `DURATION` - duration of scenario in seconds.
   * `READERS` - number of VUs performing read operations.
   * `WRITERS` - number of VUs performing write operations.
@@ -100,6 +100,44 @@ Options (in addition to the common options):
   * `SLEEP_DELETE` - time interval (in seconds) between deleting VU iterations.
   * `OBJ_NAME` - if specified, this name will be used for all write operations instead of random generation.
 
+## Morph
+
+The Morph driver is a pure-JS k6 scenario that talks to the Morph REST API
+(Bearer-token authenticated). It produces the same `morph_obj_{put,get,delete}_*`
+metrics as the gRPC/S3 drivers and reuses the same registry slots that `s3.js`
+uses (`s3_bucket`/`s3_key`), so `verify.js` can verify Morph objects as well.
+
+1. Create pre-generated buckets and objects:
+
+```shell
+$ ./scenarios/preset/preset_morph.py --size 1024 --buckets 1 --out morph.json \
+    --endpoint http://host1:80 --auth_token "$MORPH_AUTH_TOKEN" \
+    --policy default --preload_obj 500
+```
+
+`preset_morph.py` requires the `requests` Python package. Options:
+  * `--endpoint` - Morph REST API base URL (`scheme://host[:port]`, no trailing path).
+  * `--auth_token` - Bearer token (the script sends it as `Authorization: Bearer <token>`).
+  * `--policy` - placement policy name. Passed to the API as `placementPolicyName`.
+  * `--buckets` / `--preload_obj` / `--size` / `--workers` - same meaning as in `preset_s3.py`.
+  * `--update` - reuse buckets already present in `--out` instead of creating new ones.
+
+2. Execute the scenario:
+
+```shell
+$ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=8192 -e READERS=20 -e WRITERS=20 \
+    -e DELETERS=30 -e DELETE_AGE=10 \
+    -e MORPH_ENDPOINTS=http://host1:80,http://host2:80 \
+    -e MORPH_AUTH_TOKEN="$MORPH_AUTH_TOKEN" \
+    -e PREGEN_JSON=./morph.json scenarios/morph.js
+```
+
+Options (in addition to the common options):
+  * `MORPH_ENDPOINTS` - comma-separated list of Morph REST API base URLs (e.g. `http://host1:80,http://host2:80`). Each VU pins itself to one endpoint based on `__VU`.
+  * `MORPH_AUTH_TOKEN` - Bearer token; required.
+  * `DELETERS` / `DELETE_AGE` / `SLEEP_DELETE` - same as in S3.
+  * `OBJ_NAME` - if specified, this name will be used for all write operations instead of random generation.
+
 ## Verify
 
 This scenario allows to verify that objects created by a previous run are really stored in the system and their data is not corrupted. Running this scenario assumes that you've already run gRPC or HTTP or S3 scenario with option `REGISTRY_FILE`.
@@ -110,6 +148,15 @@ To verify stored objects execute scenario with options:
 ./k6 run -e CLIENTS=200 -e TIME_LIMIT=120 -e GRPC_ENDPOINTS=host1:8080,host2:8080 -e S3_ENDPOINTS=host1:8084,host2:8084 -e REGISTRY_FILE=registry.bolt scenarios/verify.js
 ```
 
+For Morph registries, pass `MORPH_ENDPOINTS` (and `MORPH_AUTH_TOKEN`) instead of
+`S3_ENDPOINTS`; Morph objects share the `s3_bucket`/`s3_key` registry slots and
+the verify scenario routes them through the Morph REST API when those env vars
+are set:
+
+```
+./k6 run -e CLIENTS=200 -e TIME_LIMIT=120 -e MORPH_ENDPOINTS=http://host1:80 -e MORPH_AUTH_TOKEN="$MORPH_AUTH_TOKEN" -e REGISTRY_FILE=registry.bolt scenarios/verify.js
+```
+
 Scenario picks up all objects in `created` status. If object is stored correctly, its' status will be changed into `verified`. If object does not exist or its' data is corrupted, then the status will be changed into `invalid`.
 Scenario ends as soon as all objects are checked or time limit is exceeded.
 
@@ -118,13 +165,14 @@ Running `VERIFY` scenario modifies status of objects in `REGISTRY_FILE`. Objects
 Objects produced by HTTP scenario will be verified via gRPC endpoints.
 
 Options:
-  * `CLIENTS` - number of VUs for verifying objects (VU can handle both GRPC and S3 objects)
+  * `CLIENTS` - number of VUs for verifying objects (a VU can handle gRPC, S3, and Morph objects)
   * `TIME_LIMIT` - amount of time in seconds that is sufficient to verify all objects. If this time interval ends, then verification process will be interrupted and objects that have not been checked will stay in the `created` state.
   * `REGISTRY_FILE` - database file from which objects for verification should be read.
   * `SLEEP` - time interval (in seconds) between VU iterations.
   * `SELECTION_SIZE` - size of batch to select for deletion (default: 1000).
   * `DIAL_TIMEOUT` - timeout to connect to a node (in seconds).
   * `STREAM_TIMEOUT` - timeout for a single stream message for `PUT`/`GET` operations (in seconds).
+  * `MORPH_ENDPOINTS` / `MORPH_AUTH_TOKEN` - if set, the bucket/key registry rows are verified via the Morph REST API instead of S3.
 
 ## Verify preset 
 

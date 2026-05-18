@@ -98,6 +98,21 @@ const s3_cli = s3.connect("http://s3.neofs.devenv:8080", {'no_verify_ssl': 'true
 - `get(bucket, key)`. Returns dictionary with `success` boolean flag and `error`
   string.
 
+## Morph
+
+The Morph REST API is driven from pure k6 JavaScript (via the built-in
+`k6/http` module); no Go-side client exists for it. See
+[`scenarios/morph.js`](scenarios/morph.js) for the load scenario and
+[`scenarios/preset/preset_morph.py`](scenarios/preset/preset_morph.py) for the
+preset script. Authentication uses a Bearer token passed via the
+`MORPH_AUTH_TOKEN` env var. Operations exercised by the scenario:
+
+- `POST /api/v1/buckets/{bucket}/objects` with `x-morph-path: base64(key)`
+- `GET /api/v1/buckets/{bucket}/objects/{url_encoded_key}`
+- `DELETE /api/v1/buckets/{bucket}/objects/{url_encoded_key}`
+
+Metrics emitted: `morph_obj_{put,get,delete}_{total,fails,duration}`.
+
 # Examples
 
 See native protocol and s3 test suit examples in [examples](./examples) dir.
