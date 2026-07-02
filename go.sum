@@ -155,8 +155,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/nspcc-dev/hrw/v2 v2.0.4 h1:o3Zh/2aF+IgGpvt414f46Ya20WG9u9vWxVd16ErFI8w=
 github.com/nspcc-dev/hrw/v2 v2.0.4/go.mod h1:dUjOx27zTTvoPmT5EG25vSSWL2tKS7ndAa2TPTiZwFo=
-github.com/nspcc-dev/neo-go v0.118.0 h1:3zTSBbAtT4qosubVzLLOWzEky2GLZ/LUzf9nZTu5sx0=
-github.com/nspcc-dev/neo-go v0.118.0/go.mod h1:6f+QLr3wg4p1xoVLxy4tyUwYOnx4mL5ashd+jCPA3iY=
+github.com/nspcc-dev/neo-go v0.120.0 h1:I/gNGRxcwjGcBpIzkaeeDfv92OxflE5DdcovZcmvD5w=
+github.com/nspcc-dev/neo-go v0.120.0/go.mod h1:D87mKpa4pQwyzT/uFY2p8be9rl40XuUBxP2Cj1wrqAY=
 github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.20 h1:8ukaQ4w1eiJd7UnrYo6+DTXB7lwjJFDBLdx/3NdIzDo=
 github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.20/go.mod h1:KtAAolqjEdTNZ8T57FvpWsE/i9/Bpj6wuRPeUs/U85I=
 github.com/nspcc-dev/rfc6979 v0.2.4 h1:NBgsdCjhLpEPJZqmC9rciMZDcSY297po2smeaRjw57k=

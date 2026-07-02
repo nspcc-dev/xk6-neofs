@@ -13,6 +13,7 @@ This document outlines major changes between releases.
 
 ### Updated
 - github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17 => v1.0.0-rc.20 (#132)
+- github.com/nspcc-dev/neo-go v0.118.0 => v0.120 (#132)
 
 ## [0.2.1] - 2026-02-04
 
