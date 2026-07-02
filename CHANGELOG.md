@@ -15,6 +15,7 @@ This document outlines major changes between releases.
 - github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17 => v1.0.0-rc.20 (#132)
 - github.com/nspcc-dev/neo-go v0.118.0 => v0.120 (#132)
 - github.com/aws/aws-sdk-go-v2 v1.41.5 => v1.42.1 (#132)
+- github.com/aws/aws-sdk-go-v2/config v1.32.10 => v1.32.27 (#132)
 
 ## [0.2.1] - 2026-02-04
 
