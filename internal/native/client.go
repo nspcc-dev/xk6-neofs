@@ -167,6 +167,7 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 
 	var prm client.PrmObjectGet
 	prm.WithinSession(tok)
+	prm.SkipChecksumVerification()
 
 	var objSize = 0
 	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, c.bufsize, func(data []byte) {
