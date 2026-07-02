@@ -149,6 +149,14 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 	return DeleteResponse{Success: true}
 }
 
+type sizeCounter int
+
+func (s *sizeCounter) Write(p []byte) (int, error) {
+	var l = len(p)
+	*(*int)(s) += l
+	return l, nil
+}
+
 func (c *Client) Get(containerID, objectID string) GetResponse {
 	cliContainerID := parseContainerID(containerID)
 	cliObjectID := parseObjectID(objectID)
@@ -169,10 +177,8 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 	prm.WithinSession(tok)
 	prm.SkipChecksumVerification()
 
-	var objSize = 0
-	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, c.bufsize, func(data []byte) {
-		objSize += len(data)
-	})
+	var objSize sizeCounter
+	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, &objSize)
 	if err != nil {
 		stats.Report(c.vu, objGetFails, 1)
 		return GetResponse{Success: false, Error: err.Error()}
@@ -190,20 +196,16 @@ func get(
 	objectID oid.ID,
 	prm client.PrmObjectGet,
 	signer user.Signer,
-	bufSize int,
-	onDataChunk func(chunk []byte),
+	w io.Writer,
 ) error {
-	var buf = make([]byte, bufSize)
-
 	_, objectReader, err := cli.ObjectGetInit(ctx, containerID, objectID, signer, prm)
 	if err != nil {
 		return err
 	}
 
-	n, _ := objectReader.Read(buf)
-	for n > 0 {
-		onDataChunk(buf[:n])
-		n, _ = objectReader.Read(buf)
+	_, err = objectReader.WriteTo(w)
+	if err != nil {
+		return err
 	}
 
 	err = objectReader.Close()
@@ -231,9 +233,8 @@ func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHa
 	prm.WithinSession(tok)
 
 	hasher := sha256.New()
-	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, c.bufsize, func(data []byte) {
-		hasher.Write(data)
-	})
+	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, hasher)
+
 	if err != nil {
 		return VerifyHashResponse{Success: false, Error: err.Error()}
 	}
