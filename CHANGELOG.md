@@ -19,6 +19,7 @@ This document outlines major changes between releases.
 - github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3 => v1.104.2 (#132)
 - github.com/grafana/sobek v0.0.0-20260121195222-d8d9202018c5 => v0.0.0-20260619084854-f843f46048fd (#132)
 - go.etcd.io/bbolt v1.4.3 => v1.5.0 (#132)
+- go.k6.io/k6 v1.6.1 => v1.8.0 (#132)
 
 ## [0.2.1] - 2026-02-04
 
