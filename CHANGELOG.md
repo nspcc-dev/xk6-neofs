@@ -12,6 +12,7 @@ This document outlines major changes between releases.
 - Go 1.25+ is required to build now (#108)
 
 ### Updated
+- github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17 => v1.0.0-rc.20 (#132)
 
 ## [0.2.1] - 2026-02-04
 
