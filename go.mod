@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/grafana/sobek v0.0.0-20260619084854-f843f46048fd
 	github.com/nspcc-dev/neo-go v0.120.0
-	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.20
+	github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.20.0.20260701132011-c8072a564b1f
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.5.0
 	go.k6.io/k6 v1.8.0
