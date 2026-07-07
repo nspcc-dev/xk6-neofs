@@ -27,7 +27,7 @@ print(args)
 def main():
     bucket_list = []
     objects_struct = []
-    payload_filepath = '/tmp/data_file'
+    payload_filepath = '/tmp/data_file_' + args.size + 'k'
 
     if args.update:
         # Open file
