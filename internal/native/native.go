@@ -140,11 +140,10 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 	objSearchDurationRelative, _ = registry.NewMetric("neofs_search_duration_relative", metrics.Trend, metrics.Time)
 
 	return &Client{
-		vu:      n.vu,
-		signer:  signer,
-		owner:   signer.UserID(),
-		tok:     tok,
-		cli:     cli,
-		bufsize: defaultBufferSize,
+		vu:     n.vu,
+		signer: signer,
+		owner:  signer.UserID(),
+		tok:    tok,
+		cli:    cli,
 	}, nil
 }
