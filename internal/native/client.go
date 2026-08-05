@@ -29,12 +29,11 @@ import (
 
 type (
 	Client struct {
-		vu      modules.VU
-		signer  user.Signer
-		owner   user.ID
-		tok     session.Object
-		cli     *client.Client
-		bufsize int
+		vu     modules.VU
+		signer user.Signer
+		owner  user.ID
+		tok    session.Object
+		cli    *client.Client
 	}
 
 	PutResponse struct {
@@ -65,28 +64,14 @@ type (
 	}
 
 	PreparedObject struct {
-		vu      modules.VU
-		signer  user.Signer
-		cli     *client.Client
-		bufsize int
+		vu     modules.VU
+		signer user.Signer
+		cli    *client.Client
 
 		hdr     object.Object
 		payload []byte
 	}
 )
-
-const defaultBufferSize = 64 * 1024
-
-func (c *Client) SetBufferSize(size int) {
-	if size < 0 {
-		panic("buffer size must be positive")
-	}
-	if size == 0 {
-		c.bufsize = defaultBufferSize
-	} else {
-		c.bufsize = size
-	}
-}
 
 func (c *Client) Put(containerID string, headers map[string]string, payload sobek.ArrayBuffer) PutResponse {
 	cliContainerID := parseContainerID(containerID)
@@ -112,7 +97,7 @@ func (c *Client) Put(containerID string, headers map[string]string, payload sobe
 	o.SetOwner(c.owner)
 	o.SetAttributes(attrs...)
 
-	resp, err := put(c.vu, c.bufsize, c.cli, &tok, c.signer, &o, payload.Bytes())
+	resp, err := put(c.vu, c.cli, &tok, c.signer, &o, payload.Bytes())
 	if err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
@@ -408,10 +393,9 @@ func (c *Client) Onsite(containerID string, payload sobek.ArrayBuffer) PreparedO
 	obj.SetPayloadChecksum(object.CalculatePayloadChecksum(data))
 
 	return PreparedObject{
-		vu:      c.vu,
-		signer:  c.signer,
-		cli:     c.cli,
-		bufsize: c.bufsize,
+		vu:     c.vu,
+		signer: c.signer,
+		cli:    c.cli,
 
 		hdr:     *obj,
 		payload: data,
@@ -440,7 +424,7 @@ func (p PreparedObject) Put(headers map[string]string) PutResponse {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
 
-	_, err = put(p.vu, p.bufsize, p.cli, nil, p.signer, &obj, p.payload)
+	_, err = put(p.vu, p.cli, nil, p.signer, &obj, p.payload)
 	if err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
@@ -448,9 +432,8 @@ func (p PreparedObject) Put(headers map[string]string) PutResponse {
 	return PutResponse{Success: true, ObjectID: id.String()}
 }
 
-func put(vu modules.VU, bufSize int, cli *client.Client, tok *session.Object, signer user.Signer,
+func put(vu modules.VU, cli *client.Client, tok *session.Object, signer user.Signer,
 	hdr *object.Object, payload []byte) (*client.ResObjectPut, error) {
-	buf := make([]byte, bufSize)
 	rdr := bytes.NewReader(payload)
 	sz := rdr.Size()
 
@@ -469,10 +452,10 @@ func put(vu modules.VU, bufSize int, cli *client.Client, tok *session.Object, si
 		return nil, err
 	}
 
-	_, err = io.CopyBuffer(objectWriter, rdr, buf)
+	_, err = objectWriter.ReadFrom(rdr)
 	if err != nil {
 		stats.Report(vu, objPutFails, 1)
-		return nil, fmt.Errorf("read payload chunk: %w", err)
+		return nil, fmt.Errorf("copy payload chunk: %w", err)
 	}
 
 	if err = objectWriter.Close(); err != nil {
