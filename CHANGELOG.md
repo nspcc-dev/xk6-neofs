@@ -10,6 +10,7 @@ This document outlines major changes between releases.
 
 ### Changed
 - Go 1.26+ is required to build now (#108, #123)
+- S3 preset creation uses boto3 instead of spawning AWS CLI for every request (#140)
 
 ### Updated
 - github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17 => v1.0.0-rc.20 (#132)

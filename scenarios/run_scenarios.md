@@ -17,6 +17,14 @@ Scenarios `grpc.js`, `http.js` and `s3.js` support the following options:
 
 Examples of how to use these options are provided below for each scenario.
 
+Preset scripts (`preset_s3.py`) need:
+
+```shell
+$ pip install -r scenarios/preset/requirements.txt
+```
+
+`preset_s3.py` uses boto3 with the same credentials as AWS CLI (`aws configure`).
+
 ## gRPC
 
 1. Create pre-generated containers or objects:
@@ -85,7 +93,7 @@ The tests will use all pre-created buckets for PUT operations and all pre-create
 ```shell
 $ ./scenarios/preset/preset_s3.py --size 1024 --buckets 1 --out s3_1024kb.json --endpoint host1:8084 --preload_obj 500 --location load-1-4
 ```
-  * '--location' - specify the name of container policy (from policy.json file). It's important to run 'aws configure' each time when the policy file has been changed to pick up the latest policies.
+  * '--location' - specify the name of container policy (from policy.json file). It's important to run 'aws configure' each time when the policy file has been changed to pick up the latest policies. boto3 reads the same AWS credentials.
 
 3. Execute scenario with options:
 
