@@ -3,3 +3,4 @@ xk6-neofs
 *.bolt
 presets
 .golangci.yml
+__pycache__/

@@ -9,7 +9,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-_client = None
+_clients = {}
 _client_lock = threading.Lock()
 
 
@@ -37,17 +37,18 @@ def _make_client(endpoint, max_pool_connections):
     )
 
 
-def init_client(endpoint, max_pool_connections=50):
-    global _client
+def init_clients(endpoints, max_pool_connections=50):
     with _client_lock:
-        _client = _make_client(endpoint, max_pool_connections)
-        return _client
+        for endpoint in endpoints:
+            if endpoint not in _clients:
+                _clients[endpoint] = _make_client(endpoint, max_pool_connections)
+        return _clients
 
 
 def _get_client(endpoint):
-    if _client is None:
-        init_client(endpoint)
-    return _client
+    if endpoint not in _clients:
+        init_clients([endpoint])
+    return _clients[endpoint]
 
 
 def create_bucket(endpoint, versioning, location):
@@ -84,19 +85,22 @@ def create_bucket(endpoint, versioning, location):
     return bucket_name
 
 
-def upload_object(bucket, payload_filepath, endpoint):
+def upload_object(bucket, payload_filepath, endpoints, start_index=0):
     max_retries = 5
     delay_after_failure = 1
     object_name = str(uuid.uuid4())
-    client = _get_client(endpoint)
+    if isinstance(endpoints, str):
+        endpoints = [endpoints]
 
     for attempt in range(max_retries):
+        endpoint = endpoints[(start_index + attempt) % len(endpoints)]
+        client = _get_client(endpoint)
         try:
             with open(payload_filepath, 'rb') as body:
                 client.put_object(Bucket=bucket, Key=object_name, Body=body)
             return object_name
         except (BotoCoreError, ClientError, OSError) as e:
-            print(f" > Object {object_name} has not been uploaded "
+            print(f" > Object {object_name} has not been uploaded to {endpoint} "
                   f"({attempt + 1} attempt): {e}, retrying after {delay_after_failure}s...")
             sleep(delay_after_failure)
 

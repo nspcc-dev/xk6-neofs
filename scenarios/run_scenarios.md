@@ -32,8 +32,9 @@ $ pip install -r scenarios/preset/requirements.txt
 The tests will use all pre-created containers for PUT operations and all pre-created objects for READ operations.
 
 ```shell
-$ ./scenarios/preset/preset_grpc.py --size 1024 --containers 1 --out grpc.json --endpoint host1:8080 --preload_obj 500 --policy "REP 2 IN X CBF 1 SELECT 2 FROM * AS X" 
+$ ./scenarios/preset/preset_grpc.py --size 1024 --containers 1 --out grpc.json --endpoint host1:8080,host2:8080 --preload_obj 500 --policy "REP 2 IN X CBF 1 SELECT 2 FROM * AS X" 
 ```
+  * `--endpoint` - NeoFS gRPC endpoints in `host:port` form. Comma-separated list spreads container creates and object puts across nodes.
   * `--policy` - container policy. If parameter is omitted, the default value is "REP 1 IN X CBF 1 SELECT 1 FROM * AS X".
   * `--update` - container id. Specify the existing container id, if parameter is omitted the new container will be created.
 2. Execute scenario with options:
@@ -56,7 +57,7 @@ Options (in addition to the common options):
 
 There is no dedicated script to preset HTTP scenario, so we use the same script as for gRPC:
 ```shell
-$ ./scenarios/preset/preset_grpc.py --size 1024 --containers 1 --out grpc.json --endpoint host1:8080 --preload_obj 500
+$ ./scenarios/preset/preset_grpc.py --size 1024 --containers 1 --out grpc.json --endpoint host1:8080,host2:8080 --preload_obj 500
 ```
 
 2. Execute scenario with options:
@@ -91,8 +92,9 @@ Run `aws configure`.
 The tests will use all pre-created buckets for PUT operations and all pre-created objects for READ operations.
 
 ```shell
-$ ./scenarios/preset/preset_s3.py --size 1024 --buckets 1 --out s3_1024kb.json --endpoint host1:8084 --preload_obj 500 --location load-1-4
+$ ./scenarios/preset/preset_s3.py --size 1024 --buckets 1 --out s3_1024kb.json --endpoint host1:8084,host2:8084 --preload_obj 500 --location load-1-4
 ```
+  * `--endpoint` - S3 gateway addresses. Comma-separated list spreads bucket creates and object puts across gateways.
   * '--location' - specify the name of container policy (from policy.json file). It's important to run 'aws configure' each time when the policy file has been changed to pick up the latest policies. boto3 reads the same AWS credentials.
 
 3. Execute scenario with options:

@@ -5,8 +5,8 @@ import json
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from helpers.aws_s3 import create_bucket, init_client, upload_object
-from helpers.cmd import random_payload
+from helpers.aws_s3 import create_bucket, init_clients, upload_object
+from helpers.cmd import endpoint_for, parse_endpoints, random_payload
 
 parser = argparse.ArgumentParser()
 
@@ -14,7 +14,7 @@ parser.add_argument('--size', help='Upload objects size in kb.')
 parser.add_argument('--buckets', help='Number of buckets to create.')
 parser.add_argument('--out', help='JSON file with output.')
 parser.add_argument('--preload_obj', help='Number of pre-loaded objects.')
-parser.add_argument('--endpoint', help='S3 Gateway address.')
+parser.add_argument('--endpoint', help='S3 Gateway address. Comma-separated list spreads puts across gateways.')
 parser.add_argument('--update', help='True/False, False by default. Save existed buckets from target file (--out). '
                                      'New buckets will not be created.')
 parser.add_argument('--location', help='AWS location. Will be empty, if has not be declared.', default="")
@@ -31,8 +31,10 @@ def main():
     payload_filepath = '/tmp/data_file_' + args.size + 'k'
     workers = args.workers
     preload_obj = int(args.preload_obj)
+    endpoints = parse_endpoints(args.endpoint)
 
-    init_client(args.endpoint, workers)
+    print(f" > Endpoints: {endpoints}")
+    init_clients(endpoints, workers)
 
     if args.update:
         with open(args.out) as f:
@@ -42,8 +44,13 @@ def main():
         print(f"Create buckets: {args.buckets}")
         with ThreadPoolExecutor(max_workers=workers) as executor:
             futures = [
-                executor.submit(create_bucket, args.endpoint, args.versioning, args.location)
-                for _ in range(int(args.buckets))
+                executor.submit(
+                    create_bucket,
+                    endpoint_for(endpoints, i),
+                    args.versioning,
+                    args.location,
+                )
+                for i in range(int(args.buckets))
             ]
             for run in as_completed(futures):
                 bucket = run.result()
@@ -60,9 +67,10 @@ def main():
     start = time.monotonic()
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
-            executor.submit(upload_object, bucket, payload_filepath, args.endpoint): bucket
-            for bucket in bucket_list
-            for _ in range(preload_obj)
+            executor.submit(upload_object, bucket, payload_filepath, endpoints, i): bucket
+            for i, bucket in enumerate(
+                bucket for bucket in bucket_list for _ in range(preload_obj)
+            )
         }
         for run in as_completed(futures):
             object_name = run.result()

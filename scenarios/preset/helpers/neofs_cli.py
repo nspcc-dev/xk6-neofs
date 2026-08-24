@@ -27,8 +27,10 @@ def create_container(endpoint, policy, wallet_file, wallet_config):
             raise ValueError(f"no CID was parsed from command output: \t{output}")
 
 
-def upload_object(container, payload_filepath, endpoint, wallet_file, wallet_config):
-    return upload_object_via_grpc(container, payload_filepath, endpoint, wallet_file, wallet_config)
+def upload_object(container, payload_filepath, endpoints, wallet_file, wallet_config, start_index=0):
+    return upload_object_via_grpc(
+        container, payload_filepath, endpoints, wallet_file, wallet_config, start_index
+    )
 
 
 def get_object(cid, oid, endpoint, out_filepath, wallet_file, wallet_config):
