@@ -1,6 +1,7 @@
 import re
 
 from helpers.cmd import execute_cmd
+from helpers.neofs_grpc import upload_object as upload_object_via_grpc
 
 
 def create_container(endpoint, policy, wallet_file, wallet_config):
@@ -27,25 +28,7 @@ def create_container(endpoint, policy, wallet_file, wallet_config):
 
 
 def upload_object(container, payload_filepath, endpoint, wallet_file, wallet_config):
-    object_name = ""
-    cmd_line = f"neofs-cli --rpc-endpoint {endpoint} object put --file {payload_filepath} --wallet {wallet_file} --config {wallet_config} " \
-               f"--cid {container} --no-progress"
-    output, success = execute_cmd(cmd_line)
-
-    if not success:
-        print(f" > Object {object_name} has not been uploaded:\n{output}")
-        return False
-    else:
-        try:
-            # taking second string from command output
-            snd_str = output.split('\n')[1]
-        except Exception:
-            print(f"Got empty input: {output}")
-            return False
-        splitted = snd_str.split(": ")
-        if len(splitted) != 2:
-            raise Exception(f"no OID was parsed from command output: \t{snd_str}")
-        return splitted[1]
+    return upload_object_via_grpc(container, payload_filepath, endpoint, wallet_file, wallet_config)
 
 
 def get_object(cid, oid, endpoint, out_filepath, wallet_file, wallet_config):
