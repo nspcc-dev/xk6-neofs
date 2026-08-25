@@ -11,11 +11,13 @@ Scenarios `grpc.js`, `http.js` and `s3.js` support the following options:
   * `REGISTRY_FILE` - if set, all produced objects will be stored in database for subsequent verification. Database file name will be set to the value of `REGISTRY_FILE`.
   * `WRITE_OBJ_SIZE` - object size in kb for write(PUT) operations.
   * `PREGEN_JSON` - path to json file with pre-generated containers and objects (in case of http scenario we use json pre-generated for grpc scenario).
+  * `QUIET` - if set to `true`, suppresses progress messages in scenario output.
   * `SLEEP_WRITE` - time interval (in seconds) between writing VU iterations.
   * `SLEEP_READ` - time interval (in seconds) between reading VU iterations.
   * `SELECTION_SIZE` - size of batch to select for deletion (default: 1000).
 
 Examples of how to use these options are provided below for each scenario.
+To suppress progress messages, add `-e QUIET=true` to any scenario command.
 
 Preset scripts (`preset_s3.py`, `preset_grpc.py`) need:
 

@@ -5,6 +5,7 @@ import { sleep } from 'k6';
 import { Counter } from 'k6/metrics';
 
 const obj_registry = registry.open(__ENV.REGISTRY_FILE);
+const quiet = (__ENV.QUIET || '').toLowerCase() === 'true';
 
 // Time limit (in seconds) for the run
 const time_limit = __ENV.TIME_LIMIT || "60";
@@ -87,7 +88,9 @@ export function obj_verify() {
 
     const obj = obj_to_verify_selector.nextObject();
     if (!obj) {
-        console.log("All objects have been verified");
+        if (!quiet) {
+            console.log("All objects have been verified");
+        }
         return;
     }
 

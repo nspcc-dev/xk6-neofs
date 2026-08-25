@@ -18,13 +18,17 @@ const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 const s3_endpoints = __ENV.S3_ENDPOINTS.split(',');
 const endpoint_to_use = __VU % s3_endpoints.length
 const s3_endpoint = s3_endpoints[endpoint_to_use];
-console.log(`VU ID: ${__VU}, S3 endpoint in use: ${s3_endpoint}`);
 const s3_client = s3.connect(`http://${s3_endpoint}`);
 
 const registry_enabled = !!__ENV.REGISTRY_FILE;
 const obj_registry = registry_enabled ? registry.open(__ENV.REGISTRY_FILE) : undefined;
 
 const duration = __ENV.DURATION;
+const quiet = (__ENV.QUIET || '').toLowerCase() === 'true';
+
+if (!quiet) {
+    console.log(`VU ID: ${__VU}, S3 endpoint in use: ${s3_endpoint}`);
+}
 
 const delete_age = __ENV.DELETE_AGE ? parseInt(__ENV.DELETE_AGE) : undefined;
 let obj_to_delete_selector = undefined;
@@ -89,13 +93,15 @@ export const options = {
 export function setup() {
     const total_vu_count = write_vu_count + read_vu_count + delete_vu_count;
 
-    console.log(`Pregenerated buckets:          ${bucket_list.length}`);
-    console.log(`Pregenerated read object size: ${read_size}`);
-    console.log(`Pregenerated total objects:    ${obj_list.length}`);
-    console.log(`Reading VUs:                   ${read_vu_count}`);
-    console.log(`Writing VUs:                   ${write_vu_count}`);
-    console.log(`Deleting VUs:                  ${delete_vu_count}`);
-    console.log(`Total VUs:                     ${total_vu_count}`);
+    if (!quiet) {
+        console.log(`Pregenerated buckets:          ${bucket_list.length}`);
+        console.log(`Pregenerated read object size: ${read_size}`);
+        console.log(`Pregenerated total objects:    ${obj_list.length}`);
+        console.log(`Reading VUs:                   ${read_vu_count}`);
+        console.log(`Writing VUs:                   ${write_vu_count}`);
+        console.log(`Deleting VUs:                  ${delete_vu_count}`);
+        console.log(`Total VUs:                     ${total_vu_count}`);
+    }
 }
 
 export function teardown(data) {
