@@ -9,14 +9,14 @@ This document outlines major changes between releases.
 ### Fixed
 
 ### Changed
-- Go 1.25+ is required to build now (#108)
+- Go 1.26+ is required to build now (#108, #123)
 
 ### Updated
 - github.com/nspcc-dev/neofs-sdk-go v1.0.0-rc.17 => v1.0.0-rc.20 (#132)
 - github.com/nspcc-dev/neo-go v0.118.0 => v0.120 (#132)
-- github.com/aws/aws-sdk-go-v2 v1.41.5 => v1.42.1 (#132)
-- github.com/aws/aws-sdk-go-v2/config v1.32.10 => v1.32.27 (#132)
-- github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3 => v1.104.2 (#132)
+- github.com/aws/aws-sdk-go-v2 v1.41.5 => v1.43.7 (#132, #123)
+- github.com/aws/aws-sdk-go-v2/config v1.32.10 => v1.32.38 (#132, #123)
+- github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3 => v1.107.3 (#132, #123)
 - github.com/grafana/sobek v0.0.0-20260121195222-d8d9202018c5 => v0.0.0-20260619084854-f843f46048fd (#132)
 - go.etcd.io/bbolt v1.4.3 => v1.5.0 (#132)
 - go.k6.io/k6 v1.6.1 => v1.8.0 (#132)
