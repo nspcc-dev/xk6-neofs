@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -34,6 +35,8 @@ var (
 	createBucketTotal, createBucketFails, createBucketDuration *metrics.Metric
 )
 
+const defaultAWSRegion = "us-east-1"
+
 func init() {
 	modules.Register("k6/x/neofs/s3", new(RootModule))
 }
@@ -51,8 +54,12 @@ func (s *S3) Exports() modules.Exports {
 	return modules.Exports{Default: s}
 }
 
+func loadDefaultAWSConfig(ctx context.Context) (aws.Config, error) {
+	return config.LoadDefaultConfig(ctx, config.WithDefaultRegion(defaultAWSRegion))
+}
+
 func (s *S3) Connect(endpoint string, params map[string]string) (*Client, error) {
-	cfg, err := config.LoadDefaultConfig(s.vu.Context())
+	cfg, err := loadDefaultAWSConfig(s.vu.Context())
 	if err != nil {
 		return nil, fmt.Errorf("configuration error: %w", err)
 	}
