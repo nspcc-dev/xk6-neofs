@@ -105,6 +105,7 @@ $ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=8192 -e READERS=20 -e WRITERS=20 -e 
 
 Options (in addition to the common options):
   * `S3_ENDPOINTS` - endpoints of S3 gateways in format `host:port`. To specify multiple endpoints separate them by comma.
+  * `ENDPOINT_SELECTION` - endpoint selection algorithm for VUs. Possible values: `round-robin` (default), `random`.
   * `DELETERS` - number of VUs performing delete operations (using deleters requires that options `DELETE_AGE` and `REGISTRY_FILE` are specified as well).
   * `DELETE_AGE` - age of object in seconds before which it can not be deleted. This parameter can be used to control how many objects we have in the system under load.
   * `SLEEP_DELETE` - time interval (in seconds) between deleting VU iterations.
