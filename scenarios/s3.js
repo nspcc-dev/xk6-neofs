@@ -22,7 +22,14 @@ if (endpoint_selection === 'random') {
 } else {
     s3_endpoint = s3_endpoints[__VU % s3_endpoints.length];
 }
-console.log(`VU ID: ${__VU}, S3 endpoint in use: ${s3_endpoint}`);
+
+const bucket_selection = __ENV.BUCKET_SELECTION || 'random';
+let bucket;
+if (endpoint_selection === 'round-robin') {
+    bucket = bucket_list[__VU % bucket_list.length]
+}
+
+console.log(`VU ID: ${__VU}, bucket selection policy: ${bucket_selection}, S3 endpoint in use: ${s3_endpoint}`);
 const s3_client = s3.connect(`http://${s3_endpoint}`);
 
 const registry_enabled = !!__ENV.REGISTRY_FILE;
@@ -114,17 +121,20 @@ export function obj_write() {
     }
 
     const key = __ENV.OBJ_NAME || uuidv4();
-    const bucket = bucket_list[Math.floor(Math.random() * bucket_list.length)];
+    let vu_bucket = bucket;
+    if (!vu_bucket) {
+        vu_bucket = bucket_list[Math.floor(Math.random() * bucket_list.length)];
+    }
 
     const { payload, hash } = generator.genPayload(registry_enabled);
-    const resp = s3_client.put(bucket, key, payload);
+    const resp = s3_client.put(vu_bucket, key, payload);
     if (!resp.success) {
         console.log(resp.error);
         return;
     }
 
     if (obj_registry) {
-        obj_registry.addObject("", "", bucket, key, hash);
+        obj_registry.addObject("", "", vu_bucket, key, hash);
     }
 }
 
