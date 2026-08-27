@@ -16,10 +16,11 @@ To build a `k6` binary with this extension, first ensure you have the prerequisi
 
 - Go
 - Git
+- Python 3 (for preset scripts)
 
 1. Clone this repository
 ```shell
-git clone github.com/nspcc-dev/xk6-neofs
+git clone https://github.com/nspcc-dev/xk6-neofs
 cd xk6-neofs
 ```
 
@@ -37,6 +38,25 @@ make build
 ```shell
 ./xk6-neofs run test-script.js
 ```
+
+# Preset
+
+`preset_grpc.py` and `preset_s3.py` prepare containers/buckets and objects for the k6 scenarios. Install their Python dependencies into `.venv`:
+
+```shell
+make install_preset
+source .venv/bin/activate
+```
+
+`preset_grpc.py` still needs `neofs-cli` on `PATH` to create containers.
+
+```shell
+./scenarios/preset/preset_grpc.py --wallet ./wallet.json --config ./config.yml \
+  --endpoint 192.168.42.10:8080 --workers 1 --policy "REP 3" \
+  --containers 1 --preload_obj 100 --size 4 --out ./grpc.json
+```
+
+See [scenarios/run_scenarios.md](./scenarios/run_scenarios.md) for S3 presets and full scenario options.
 
 # API
 

@@ -5,3 +5,4 @@ bin/xk6
 presets
 .golangci.yml
 __pycache__/
+.venv/
