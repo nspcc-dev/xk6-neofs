@@ -52,7 +52,7 @@ jobs:
         run: mv ./xk6-neofs* ./xk6-neofs-${{ matrix.os.bin-name }}-${{ matrix.arch }}
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: xk6-neofs-${{ matrix.os.bin-name }}-${{ matrix.arch }}
           path: ./xk6-neofs*
