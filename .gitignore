@@ -1,5 +1,6 @@
 k6
 xk6-neofs
+bin/xk6
 *.bolt
 presets
 .golangci.yml
