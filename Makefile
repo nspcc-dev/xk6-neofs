@@ -3,10 +3,13 @@
 export GOBIN ?= $(shell pwd)/bin
 BINARY=xk6-neofs
 XK6_VERSION=1.3.5
+PYTHON ?= python3
+VENV ?= .venv
+PRESET_REQUIREMENTS = scenarios/preset/requirements.txt
 VERSION ?= $(shell git describe --tags --match "v*" --abbrev=8 2>/dev/null | sed -r 's,^v([0-9]+\.[0-9]+)\.([0-9]+)(-.*)?$$,\1 \2 \3,' | while read mm patch suffix; do if [ -z "$$suffix" ]; then echo $$mm.$$patch; else patch=`expr $$patch + 1`; echo $$mm.$${patch}-pre$$suffix; fi; done)
 LDFLAGS:=-s -w -X 'go.k6.io/k6/lib/consts.VersionDetails=xk6-neofs-$(VERSION)'
 
-.PHONY: build install_xk6 test lint format modernize
+.PHONY: build install_xk6 install_preset test lint format modernize
 
 # Build xk6-neofs binary
 build: install_xk6
@@ -17,6 +20,12 @@ build: install_xk6
 install_xk6:
 	@echo "=> Installing utils"
 	@go install go.k6.io/xk6/cmd/xk6@v$(XK6_VERSION)
+
+# Install Python dependencies used by scenarios/preset into a local venv
+install_preset:
+	@echo "=> Installing preset Python dependencies"
+	$(PYTHON) -m venv $(VENV)
+	$(VENV)/bin/python -m pip install -r $(PRESET_REQUIREMENTS)
 
 # Run tests
 test:

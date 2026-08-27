@@ -17,10 +17,11 @@ Scenarios `grpc.js`, `http.js` and `s3.js` support the following options:
 
 Examples of how to use these options are provided below for each scenario.
 
-Preset scripts (`preset_s3.py`, `preset_grpc.py`) need:
+Preset scripts (`preset_s3.py`, `preset_grpc.py`) need Python dependencies from `scenarios/preset/requirements.txt`. Install them into `.venv` with:
 
 ```shell
-$ pip install -r scenarios/preset/requirements.txt
+$ make install_preset
+$ source .venv/bin/activate
 ```
 
 `preset_s3.py` uses boto3 with the same credentials as AWS CLI (`aws configure`). `preset_grpc.py` uploads objects over gRPC from Python; `neofs-cli` is still used to create containers.

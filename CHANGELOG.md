@@ -5,6 +5,7 @@ This document outlines major changes between releases.
 ## [Unreleased]
 
 ### Added
+- Makefile `install_preset` target installs preset Python dependencies into `.venv`
 
 ### Fixed
 
