@@ -51,7 +51,7 @@ source .venv/bin/activate
 `preset_grpc.py` still needs `neofs-cli` on `PATH` to create containers.
 
 ```shell
-./scenarios/preset/preset_grpc.py --wallet ./wallet.json --config ./config.yml \
+python ./scenarios/preset/preset_grpc.py --wallet ./wallet.json --config ./config.yml \
   --endpoint 192.168.42.10:8080 --workers 1 --policy "REP 3" \
   --containers 1 --preload_obj 100 --size 4 --out ./grpc.json
 ```
