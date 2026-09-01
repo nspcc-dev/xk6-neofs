@@ -78,6 +78,20 @@ def _load_cli_config(wallet_config):
     return cfg.get("password") or "", cfg.get("address") or ""
 
 
+def _normalize_wallet_json(data):
+    # neo-go / neofs-cli accept NEP-6 wallets without fields neo-mamba requires.
+    if "name" not in data:
+        data["name"] = ""
+    if "extra" not in data:
+        data["extra"] = {}
+    for account in data.get("accounts") or []:
+        account.setdefault("label", None)
+        account.setdefault("isDefault", False)
+        account.setdefault("lock", False)
+        account.setdefault("extra", {})
+    return data
+
+
 def load_wallet_keys(wallet_file, wallet_config):
     cache_key = (wallet_file, wallet_config)
     with _wallet_lock:
@@ -86,7 +100,7 @@ def load_wallet_keys(wallet_file, wallet_config):
 
         password, address = _load_cli_config(wallet_config)
         with open(wallet_file) as f:
-            wallet = Wallet.from_json(json.load(f), passwords=[password])
+            wallet = Wallet.from_json(_normalize_wallet_json(json.load(f)), passwords=[password])
         acc = None
         if address:
             for candidate in wallet.accounts:
