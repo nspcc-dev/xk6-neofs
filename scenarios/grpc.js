@@ -22,7 +22,15 @@ if (endpoint_selection === 'random') {
 } else {
     grpc_endpoint = grpc_endpoints[__VU % grpc_endpoints.length];
 }
+
+const bucket_selection = __ENV.BUCKET_SELECTION || 'random';
+let container;
+if (bucket_selection === 'round-robin') {
+    container = container_list[__VU % container_list.length];
+}
 const grpc_client = native.connect(grpc_endpoint, '', __ENV.DIAL_TIMEOUT ? parseInt(__ENV.DIAL_TIMEOUT) : 5, __ENV.STREAM_TIMEOUT ? parseInt(__ENV.STREAM_TIMEOUT) : 15);
+
+console.log(`VU ID: ${__VU}, bucket selection policy: ${bucket_selection}, GRPC endpoint in use: ${grpc_endpoint}`);
 
 const registry_enabled = !!__ENV.REGISTRY_FILE;
 const obj_registry = registry_enabled ? registry.open(__ENV.REGISTRY_FILE) : undefined;
@@ -116,17 +124,20 @@ export function obj_write() {
     const headers = {
         unique_header: uuidv4()
     };
-    const container = container_list[Math.floor(Math.random() * container_list.length)];
+    let vu_container = container;
+    if (!vu_container) {
+        vu_container = container_list[Math.floor(Math.random() * container_list.length)];
+    }
 
     const { payload, hash } = generator.genPayload(registry_enabled);
-    const resp = grpc_client.put(container, headers, payload);
+    const resp = grpc_client.put(vu_container, headers, payload);
     if (!resp.success) {
-        console.log({cid: container, error: resp.error});
+        console.log({cid: vu_container, error: resp.error});
         return;
     }
 
     if (obj_registry) {
-        obj_registry.addObject(container, resp.object_id, "", "", hash);
+        obj_registry.addObject(vu_container, resp.object_id, "", "", hash);
     }
 }
 
