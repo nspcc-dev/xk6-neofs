@@ -14,9 +14,14 @@ const container_list = new SharedArray('container_list', function () {
 
 const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 
-// Select random gRPC endpoint for current VU
 const grpc_endpoints = __ENV.GRPC_ENDPOINTS.split(',');
-const grpc_endpoint = grpc_endpoints[Math.floor(Math.random() * grpc_endpoints.length)];
+const endpoint_selection = __ENV.ENDPOINT_SELECTION || 'round-robin';
+let grpc_endpoint;
+if (endpoint_selection === 'random') {
+    grpc_endpoint = grpc_endpoints[Math.floor(Math.random() * grpc_endpoints.length)];
+} else {
+    grpc_endpoint = grpc_endpoints[__VU % grpc_endpoints.length];
+}
 const grpc_client = native.connect(grpc_endpoint, '', __ENV.DIAL_TIMEOUT ? parseInt(__ENV.DIAL_TIMEOUT) : 5, __ENV.STREAM_TIMEOUT ? parseInt(__ENV.STREAM_TIMEOUT) : 15);
 
 const registry_enabled = !!__ENV.REGISTRY_FILE;
