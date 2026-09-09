@@ -51,15 +51,29 @@ jobs:
       - name: Rename CLI binary
         run: mv ./xk6-neofs* ./xk6-neofs-${{ matrix.os.bin-name }}-${{ matrix.arch }}
 
-      - name: Pack scenarios
-        run: tar czf scenarios.tar.gz scenarios
-
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: xk6-neofs-${{ matrix.os.bin-name }}-${{ matrix.arch }}
           path: ./xk6-neofs*
           if-no-files-found: error
+
+      - name: Attach binary to the release as an asset
+        if: ${{ github.event_name == 'release' }}
+        run: gh release upload ${{ github.event.release.tag_name }} ./xk6-neofs-${{ matrix.os.bin-name }}-${{ matrix.arch }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  pack_scenarios:
+    name: Pack scenarios
+    runs-on: ubuntu-slim
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Pack scenarios
+        run: tar czf scenarios.tar.gz scenarios
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -69,8 +83,8 @@ jobs:
           if-no-files-found: error
           archive: false
 
-      - name: Attach binary to the release as an asset
+      - name: Attach to the release as an asset
         if: ${{ github.event_name == 'release' }}
-        run: gh release upload ${{ github.event.release.tag_name }} ./xk6-neofs-${{ matrix.os.bin-name }}-${{ matrix.arch }} ./scenarios.tar.gz
+        run: gh release upload ${{ github.event.release.tag_name }} ./scenarios.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
