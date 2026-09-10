@@ -25,7 +25,7 @@ if (endpoint_selection === 'random') {
 
 const bucket_selection = __ENV.BUCKET_SELECTION || 'random';
 let bucket;
-if (endpoint_selection === 'round-robin') {
+if (bucket_selection === 'round-robin') {
     bucket = bucket_list[__VU % bucket_list.length]
 }
 
