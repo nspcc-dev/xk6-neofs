@@ -143,7 +143,16 @@ export function obj_read() {
         sleep(__ENV.SLEEP_READ);
     }
 
-    const obj = obj_list[Math.floor(Math.random() * obj_list.length)];
+    let vu_bucket = bucket;
+    if (!vu_bucket) {
+        vu_bucket = bucket_list[Math.floor(Math.random() * bucket_list.length)];
+    }
+
+    const selected_obj_list = obj_list.filter((item) => item.bucket === vu_bucket);
+    const obj = selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)];
+    if (!obj) {
+        return;
+    }
 
     const resp = s3_client.get(obj.bucket, obj.object);
     if (!resp.success) {

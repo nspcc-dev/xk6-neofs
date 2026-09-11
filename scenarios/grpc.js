@@ -146,7 +146,17 @@ export function obj_read() {
         sleep(__ENV.SLEEP_READ);
     }
 
-    const obj = obj_list[Math.floor(Math.random() * obj_list.length)];
+    let vu_container = container;
+    if (!vu_container) {
+        vu_container = container_list[Math.floor(Math.random() * container_list.length)];
+    }
+
+    const selected_obj_list = obj_list.filter((item) => item.container === vu_container);
+    const obj = selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)];
+    if (!obj) {
+        return;
+    }
+
     const resp = grpc_client.get(obj.container, obj.object)
     if (!resp.success) {
         console.log({cid: obj.container, oid: obj.object, error: resp.error});
