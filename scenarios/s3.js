@@ -157,8 +157,8 @@ export function obj_read() {
         vu_bucket = bucket_list[Math.floor(Math.random() * bucket_list.length)];
     }
 
-    const selected_obj_list = obj_list_by_bucket[vu_bucket] || [];
-    const obj = selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)];
+    const selected_obj_list = obj_list_by_bucket[vu_bucket] || obj_list;
+    const obj = selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)] || obj_list[Math.floor(Math.random() * obj_list.length)];
     if (!obj) {
         return;
     }

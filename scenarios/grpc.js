@@ -160,8 +160,8 @@ export function obj_read() {
         vu_container = container_list[Math.floor(Math.random() * container_list.length)];
     }
 
-    const selected_obj_list = obj_list_by_container[vu_container] || [];
-    const obj = selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)];
+    const selected_obj_list = obj_list_by_container[vu_container] || obj_list;
+    const obj = selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)] || obj_list[Math.floor(Math.random() * obj_list.length)];
     if (!obj) {
         return;
     }
