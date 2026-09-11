@@ -12,6 +12,15 @@ const bucket_list = new SharedArray('bucket_list', function () {
     return JSON.parse(open(__ENV.PREGEN_JSON)).buckets;
 });
 
+const obj_list_by_bucket = {};
+for (const obj of obj_list) {
+    if (!obj_list_by_bucket[obj.bucket]) {
+        obj_list_by_bucket[obj.bucket] = [];
+    }
+
+    obj_list_by_bucket[obj.bucket].push(obj);
+}
+
 const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 
 const s3_endpoints = __ENV.S3_ENDPOINTS.split(',');
@@ -148,7 +157,7 @@ export function obj_read() {
         vu_bucket = bucket_list[Math.floor(Math.random() * bucket_list.length)];
     }
 
-    const selected_obj_list = obj_list.filter((item) => item.bucket === vu_bucket);
+    const selected_obj_list = obj_list_by_bucket[vu_bucket] || [];
     const obj = selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)];
     if (!obj) {
         return;
