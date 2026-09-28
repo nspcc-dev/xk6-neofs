@@ -14,7 +14,7 @@ LDFLAGS:=-s -w -X 'go.k6.io/k6/lib/consts.VersionDetails=xk6-neofs-$(VERSION)'
 # Build xk6-neofs binary
 build: install_xk6
 	@echo "=> Building binary"
-	$(GOBIN)/xk6 build --build-flags="-ldflags=$(LDFLAGS)" -v --with github.com/nspcc-dev/xk6-neofs=. --output $(BINARY)
+	$(GOBIN)/xk6 build --build-flags="-ldflags=$(LDFLAGS)" -v --with github.com/nspcc-dev/xk6-neofs=. --with google.golang.org/grpc=github.com/cthulhu-rider/grpc-go@v0.0.0-20260928154303-fe2805fc7628 --output $(BINARY)
 
 # Install required utils
 install_xk6:
