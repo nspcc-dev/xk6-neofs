@@ -12,6 +12,15 @@ const container_list = new SharedArray('container_list', function () {
     return JSON.parse(open(__ENV.PREGEN_JSON)).containers;
 });
 
+const obj_list_by_container = {};
+for (const obj of obj_list) {
+    if (!obj_list_by_container[obj.container]) {
+        obj_list_by_container[obj.container] = [];
+    }
+
+    obj_list_by_container[obj.container].push(obj);
+}
+
 const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 
 const grpc_endpoints = __ENV.GRPC_ENDPOINTS.split(',');
@@ -146,7 +155,17 @@ export function obj_read() {
         sleep(__ENV.SLEEP_READ);
     }
 
-    const obj = obj_list[Math.floor(Math.random() * obj_list.length)];
+    let vu_container = container;
+    if (!vu_container) {
+        vu_container = container_list[Math.floor(Math.random() * container_list.length)];
+    }
+
+    const selected_obj_list = obj_list_by_container[vu_container] || obj_list;
+    const obj = selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)] || obj_list[Math.floor(Math.random() * obj_list.length)];
+    if (!obj) {
+        return;
+    }
+
     const resp = grpc_client.get(obj.container, obj.object)
     if (!resp.success) {
         console.log({cid: obj.container, oid: obj.object, error: resp.error});
