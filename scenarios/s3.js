@@ -24,21 +24,28 @@ for (const obj of obj_list) {
 const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 
 const s3_endpoints = __ENV.S3_ENDPOINTS.split(',');
-const endpoint_selection = __ENV.ENDPOINT_SELECTION || 'round-robin';
+const endpoint_selection = __ENV.ENDPOINT_SELECTION || 'random';
 let s3_endpoint;
 if (endpoint_selection === 'random') {
     s3_endpoint = s3_endpoints[Math.floor(Math.random() * s3_endpoints.length)];
-} else {
-    s3_endpoint = s3_endpoints[__VU % s3_endpoints.length];
+}
+
+if (endpoint_selection === 'round-robin') {
+    const vuIndex = __VU > 0 ? __VU - 1 : 0;
+    s3_endpoint = s3_endpoints[vuIndex % s3_endpoints.length];
 }
 
 const bucket_selection = __ENV.BUCKET_SELECTION || 'random';
-let bucket;
+let bucket = 'Random for each request';
 if (bucket_selection === 'round-robin') {
-    bucket = bucket_list[__VU % bucket_list.length]
+    const vuIndex = __VU > 0 ? __VU - 1 : 0;
+    bucket = bucket_list[vuIndex % bucket_list.length];
 }
 
-console.log(`VU ID: ${__VU}, bucket selection policy: ${bucket_selection}, S3 endpoint in use: ${s3_endpoint}`);
+if (__VU > 0) {
+    console.log(`VU ID: ${__VU}, Bucket: ${bucket}, Endpoint: ${s3_endpoint}`);
+}
+
 const s3_client = s3.connect(`http://${s3_endpoint}`);
 
 const registry_enabled = !!__ENV.REGISTRY_FILE;
