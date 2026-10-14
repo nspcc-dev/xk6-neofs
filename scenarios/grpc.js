@@ -36,14 +36,16 @@ if (endpoint_selection === 'round-robin') {
 }
 
 const bucket_selection = __ENV.BUCKET_SELECTION || 'random';
-let container;
+let container = 'Random for each request';
 if (bucket_selection === 'round-robin') {
     const vuIndex = __VU > 0 ? __VU - 1 : 0;
     container = container_list[vuIndex % container_list.length];
 }
 const grpc_client = native.connect(grpc_endpoint, '', __ENV.DIAL_TIMEOUT ? parseInt(__ENV.DIAL_TIMEOUT) : 5, __ENV.STREAM_TIMEOUT ? parseInt(__ENV.STREAM_TIMEOUT) : 15);
 
-console.log(`VU ID: ${__VU}, bucket selection policy: ${bucket_selection}, GRPC endpoint in use: ${grpc_endpoint}`);
+if (__VU > 0) {
+    console.log(`VU ID: ${__VU}, Bucket: ${container}, Endpoint: ${grpc_endpoint}`);
+}
 
 const registry_enabled = !!__ENV.REGISTRY_FILE;
 const obj_registry = registry_enabled ? registry.open(__ENV.REGISTRY_FILE) : undefined;

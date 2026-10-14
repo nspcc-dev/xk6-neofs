@@ -36,13 +36,16 @@ if (endpoint_selection === 'round-robin') {
 }
 
 const bucket_selection = __ENV.BUCKET_SELECTION || 'random';
-let bucket;
+let bucket = 'Random for each request';
 if (bucket_selection === 'round-robin') {
     const vuIndex = __VU > 0 ? __VU - 1 : 0;
     bucket = bucket_list[vuIndex % bucket_list.length];
 }
 
-console.log(`VU ID: ${__VU}, bucket selection policy: ${bucket_selection}, S3 endpoint in use: ${s3_endpoint}`);
+if (__VU > 0) {
+    console.log(`VU ID: ${__VU}, Bucket: ${bucket}, Endpoint: ${s3_endpoint}`);
+}
+
 const s3_client = s3.connect(`http://${s3_endpoint}`);
 
 const registry_enabled = !!__ENV.REGISTRY_FILE;
