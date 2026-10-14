@@ -28,14 +28,18 @@ const endpoint_selection = __ENV.ENDPOINT_SELECTION || 'round-robin';
 let s3_endpoint;
 if (endpoint_selection === 'random') {
     s3_endpoint = s3_endpoints[Math.floor(Math.random() * s3_endpoints.length)];
-} else {
-    s3_endpoint = s3_endpoints[__VU % s3_endpoints.length];
+}
+
+if (endpoint_selection === 'round-robin') {
+    const vuIndex = __VU > 0 ? __VU - 1 : 0;
+    s3_endpoint = s3_endpoints[vuIndex % s3_endpoints.length];
 }
 
 const bucket_selection = __ENV.BUCKET_SELECTION || 'random';
 let bucket;
 if (bucket_selection === 'round-robin') {
-    bucket = bucket_list[__VU % bucket_list.length]
+    const vuIndex = __VU > 0 ? __VU - 1 : 0;
+    bucket = bucket_list[vuIndex % bucket_list.length];
 }
 
 console.log(`VU ID: ${__VU}, bucket selection policy: ${bucket_selection}, S3 endpoint in use: ${s3_endpoint}`);

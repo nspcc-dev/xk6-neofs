@@ -28,14 +28,18 @@ const endpoint_selection = __ENV.ENDPOINT_SELECTION || 'round-robin';
 let grpc_endpoint;
 if (endpoint_selection === 'random') {
     grpc_endpoint = grpc_endpoints[Math.floor(Math.random() * grpc_endpoints.length)];
-} else {
-    grpc_endpoint = grpc_endpoints[__VU % grpc_endpoints.length];
+}
+
+if (endpoint_selection === 'round-robin') {
+    const vuIndex = __VU > 0 ? __VU - 1 : 0;
+    grpc_endpoint = grpc_endpoints[vuIndex % grpc_endpoints.length];
 }
 
 const bucket_selection = __ENV.BUCKET_SELECTION || 'random';
 let container;
 if (bucket_selection === 'round-robin') {
-    container = container_list[__VU % container_list.length];
+    const vuIndex = __VU > 0 ? __VU - 1 : 0;
+    container = container_list[vuIndex % container_list.length];
 }
 const grpc_client = native.connect(grpc_endpoint, '', __ENV.DIAL_TIMEOUT ? parseInt(__ENV.DIAL_TIMEOUT) : 5, __ENV.STREAM_TIMEOUT ? parseInt(__ENV.STREAM_TIMEOUT) : 15);
 
