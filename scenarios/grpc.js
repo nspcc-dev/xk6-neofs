@@ -24,7 +24,7 @@ for (const obj of obj_list) {
 const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 
 const grpc_endpoints = __ENV.GRPC_ENDPOINTS.split(',');
-const endpoint_selection = __ENV.ENDPOINT_SELECTION || 'round-robin';
+const endpoint_selection = __ENV.ENDPOINT_SELECTION || 'random';
 let grpc_endpoint;
 if (endpoint_selection === 'random') {
     grpc_endpoint = grpc_endpoints[Math.floor(Math.random() * grpc_endpoints.length)];

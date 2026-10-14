@@ -24,7 +24,7 @@ for (const obj of obj_list) {
 const read_size = JSON.parse(open(__ENV.PREGEN_JSON)).obj_size;
 
 const s3_endpoints = __ENV.S3_ENDPOINTS.split(',');
-const endpoint_selection = __ENV.ENDPOINT_SELECTION || 'round-robin';
+const endpoint_selection = __ENV.ENDPOINT_SELECTION || 'random';
 let s3_endpoint;
 if (endpoint_selection === 'random') {
     s3_endpoint = s3_endpoints[Math.floor(Math.random() * s3_endpoints.length)];
