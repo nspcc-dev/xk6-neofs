@@ -91,6 +91,7 @@ func (s *S3) Connect(endpoint string, params map[string]string) (*Client, error)
 				TLSClientConfig: &tls.Config{
 					InsecureSkipVerify: noVerifySSL,
 				},
+				ForceAttemptHTTP2: true,
 			},
 			Timeout: timeout,
 		}
