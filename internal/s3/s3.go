@@ -86,12 +86,14 @@ func (s *S3) Connect(endpoint string, params map[string]string) (*Client, error)
 		// do not retry failed requests, by default client does up to 3 retry
 		options.Retryer = aws.NopRetryer{}
 		// s3 sometimes use self-signed certs
+		protocols := new(http.Protocols)
+		protocols.SetUnencryptedHTTP2(true)
 		options.HTTPClient = &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
 					InsecureSkipVerify: noVerifySSL,
 				},
-				ForceAttemptHTTP2: true,
+				Protocols: protocols,
 			},
 			Timeout: timeout,
 		}
