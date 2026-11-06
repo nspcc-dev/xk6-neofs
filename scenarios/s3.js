@@ -137,20 +137,19 @@ export function obj_write() {
     }
 
     const key = __ENV.OBJ_NAME || uuidv4();
-    let vu_bucket = bucket;
-    if (!vu_bucket) {
-        vu_bucket = bucket_list[Math.floor(Math.random() * bucket_list.length)];
+    if (bucket_selection === 'random') {
+        bucket = bucket_list[Math.floor(Math.random() * bucket_list.length)];
     }
 
     const { payload, hash } = generator.genPayload(registry_enabled);
-    const resp = s3_client.put(vu_bucket, key, payload);
+    const resp = s3_client.put(bucket, key, payload);
     if (!resp.success) {
         console.log(resp.error);
         return;
     }
 
     if (obj_registry) {
-        obj_registry.addObject("", "", vu_bucket, key, hash);
+        obj_registry.addObject("", "", bucket, key, hash);
     }
 }
 
@@ -159,12 +158,11 @@ export function obj_read() {
         sleep(__ENV.SLEEP_READ);
     }
 
-    let vu_bucket = bucket;
-    if (!vu_bucket) {
-        vu_bucket = bucket_list[Math.floor(Math.random() * bucket_list.length)];
+    if (bucket_selection === 'random') {
+        bucket = bucket_list[Math.floor(Math.random() * bucket_list.length)];
     }
 
-    const selected_obj_list = obj_list_by_bucket[vu_bucket] || obj_list;
+    const selected_obj_list = obj_list_by_bucket[bucket] || obj_list;
     const obj = selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)] || obj_list[Math.floor(Math.random() * obj_list.length)];
     if (!obj) {
         return;

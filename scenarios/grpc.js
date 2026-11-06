@@ -139,20 +139,19 @@ export function obj_write() {
     const headers = {
         unique_header: uuidv4()
     };
-    let vu_container = container;
-    if (!vu_container) {
-        vu_container = container_list[Math.floor(Math.random() * container_list.length)];
+    if (bucket_selection === 'random') {
+        container = container_list[Math.floor(Math.random() * container_list.length)];
     }
 
     const { payload, hash } = generator.genPayload(registry_enabled);
-    const resp = grpc_client.put(vu_container, headers, payload);
+    const resp = grpc_client.put(container, headers, payload);
     if (!resp.success) {
-        console.log({cid: vu_container, error: resp.error});
+        console.log({cid: container, error: resp.error});
         return;
     }
 
     if (obj_registry) {
-        obj_registry.addObject(vu_container, resp.object_id, "", "", hash);
+        obj_registry.addObject(container, resp.object_id, "", "", hash);
     }
 }
 
@@ -161,12 +160,11 @@ export function obj_read() {
         sleep(__ENV.SLEEP_READ);
     }
 
-    let vu_container = container;
-    if (!vu_container) {
-        vu_container = container_list[Math.floor(Math.random() * container_list.length)];
+    if (bucket_selection === 'random') {
+        container = container_list[Math.floor(Math.random() * container_list.length)];
     }
 
-    const selected_obj_list = obj_list_by_container[vu_container] || obj_list;
+    const selected_obj_list = obj_list_by_container[container] || obj_list;
     const obj = selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)] || obj_list[Math.floor(Math.random() * obj_list.length)];
     if (!obj) {
         return;
