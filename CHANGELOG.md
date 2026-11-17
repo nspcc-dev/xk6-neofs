@@ -7,8 +7,10 @@ This document outlines major changes between releases.
 ### Added
 
 ### Fixed
+- Random bucket selection in S3 and gRPC scenarios (#172)
 
 ### Changed
+- Unknown BUCKET_SELECTION and ENDPOINT_SELECTION values are rejected in S3 and gRPC scenarios (#172)
 
 ### Updated
 
