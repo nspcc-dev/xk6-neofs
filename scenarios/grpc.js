@@ -29,10 +29,6 @@ if (endpoint_selection !== 'random' && endpoint_selection !== 'round-robin') {
     throw new Error(`invalid ENDPOINT_SELECTION '${endpoint_selection}', expected 'random' or 'round-robin'`);
 }
 let grpc_endpoint;
-if (endpoint_selection === 'random') {
-    grpc_endpoint = grpc_endpoints[Math.floor(Math.random() * grpc_endpoints.length)];
-}
-
 if (endpoint_selection === 'round-robin') {
     const vuIndex = __VU > 0 ? __VU - 1 : 0;
     grpc_endpoint = grpc_endpoints[vuIndex % grpc_endpoints.length];
@@ -47,10 +43,14 @@ if (bucket_selection === 'round-robin') {
     const vuIndex = __VU > 0 ? __VU - 1 : 0;
     container = container_list[vuIndex % container_list.length];
 }
-const grpc_client = native.connect(grpc_endpoint, '', __ENV.DIAL_TIMEOUT ? parseInt(__ENV.DIAL_TIMEOUT) : 5, __ENV.STREAM_TIMEOUT ? parseInt(__ENV.STREAM_TIMEOUT) : 15);
+const grpc_clients = (grpc_endpoint ? [grpc_endpoint] : grpc_endpoints).map(e => native.connect(e, '', __ENV.DIAL_TIMEOUT ? parseInt(__ENV.DIAL_TIMEOUT) : 5, __ENV.STREAM_TIMEOUT ? parseInt(__ENV.STREAM_TIMEOUT) : 15));
+
+function pick_client() {
+    return grpc_clients[Math.floor(Math.random() * grpc_clients.length)];
+}
 
 if (__VU > 0) {
-    console.log(`VU ID: ${__VU}, Bucket: ${container || 'random for each request'}, Endpoint: ${grpc_endpoint}`);
+    console.log(`VU ID: ${__VU}, Bucket: ${container || 'random for each request'}, Endpoint: ${grpc_endpoint || 'random for each request'}`);
 }
 
 const registry_enabled = !!__ENV.REGISTRY_FILE;
@@ -178,7 +178,7 @@ export function obj_write() {
     const vu_container = select_container();
 
     const { payload, hash } = generator.genPayload(registry_enabled);
-    const resp = grpc_client.put(vu_container, headers, payload);
+    const resp = pick_client().put(vu_container, headers, payload);
     if (!resp.success) {
         console.log({cid: vu_container, error: resp.error});
         return;
@@ -206,7 +206,7 @@ export function obj_read() {
         return;
     }
 
-    const resp = grpc_client.get(obj.container, obj.object)
+    const resp = pick_client().get(obj.container, obj.object)
     if (!resp.success) {
         console.log({cid: obj.container, oid: obj.object, error: resp.error});
     }
@@ -222,7 +222,7 @@ export function obj_stat() {
         return;
     }
 
-    const resp = grpc_client.head(obj.container, obj.object)
+    const resp = pick_client().head(obj.container, obj.object)
     if (!resp.success) {
         console.log({cid: obj.container, oid: obj.object, error: resp.error});
     }
@@ -234,7 +234,7 @@ export function obj_list() {
     }
 
     const vu_container = select_container();
-    const resp = grpc_client.list(vu_container, list_prefix);
+    const resp = pick_client().list(vu_container, list_prefix);
     if (!resp.success) {
         console.log({cid: vu_container, error: resp.error});
     }
@@ -250,7 +250,7 @@ export function obj_delete() {
         return;
     }
 
-    const resp = grpc_client.delete(obj.c_id, obj.o_id);
+    const resp = pick_client().delete(obj.c_id, obj.o_id);
     if (!resp.success) {
         // Log errors except (2052 - object already deleted)
         console.log({cid: obj.c_id, oid: obj.o_id, error: resp.error});

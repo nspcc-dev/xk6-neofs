@@ -17,6 +17,7 @@ This document outlines major changes between releases.
 - S3 GET reported success when reading the body failed, and did not close it (#181)
 
 ### Changed
+- ENDPOINT_SELECTION=random selects an endpoint for each request in S3 and gRPC scenarios (#164)
 - Unknown BUCKET_SELECTION and ENDPOINT_SELECTION values are rejected in S3 and gRPC scenarios (#172)
 - Scenarios show p(99) in the summary (#179)
 - The samples of one request are sent together, with one timestamp, as k6's HTTP module does (#185)
