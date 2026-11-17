@@ -29,10 +29,6 @@ if (endpoint_selection !== 'random' && endpoint_selection !== 'round-robin') {
     throw new Error(`invalid ENDPOINT_SELECTION '${endpoint_selection}', expected 'random' or 'round-robin'`);
 }
 let s3_endpoint;
-if (endpoint_selection === 'random') {
-    s3_endpoint = s3_endpoints[Math.floor(Math.random() * s3_endpoints.length)];
-}
-
 if (endpoint_selection === 'round-robin') {
     const vuIndex = __VU > 0 ? __VU - 1 : 0;
     s3_endpoint = s3_endpoints[vuIndex % s3_endpoints.length];
@@ -49,10 +45,14 @@ if (bucket_selection === 'round-robin') {
 }
 
 if (__VU > 0) {
-    console.log(`VU ID: ${__VU}, Bucket: ${bucket || 'random for each request'}, Endpoint: ${s3_endpoint}`);
+    console.log(`VU ID: ${__VU}, Bucket: ${bucket || 'random for each request'}, Endpoint: ${s3_endpoint || 'random for each request'}`);
 }
 
-const s3_client = s3.connect(`http://${s3_endpoint}`);
+const s3_clients = (s3_endpoint ? [s3_endpoint] : s3_endpoints).map(e => s3.connect(`http://${e}`));
+
+function pick_client() {
+    return s3_clients[Math.floor(Math.random() * s3_clients.length)];
+}
 
 const registry_enabled = !!__ENV.REGISTRY_FILE;
 const obj_registry = registry_enabled ? registry.open(__ENV.REGISTRY_FILE) : undefined;
@@ -149,7 +149,7 @@ export function obj_write() {
     }
 
     const { payload, hash } = generator.genPayload(registry_enabled);
-    const resp = s3_client.put(vu_bucket, key, payload);
+    const resp = pick_client().put(vu_bucket, key, payload);
     if (!resp.success) {
         console.log(resp.error);
         return;
@@ -176,7 +176,7 @@ export function obj_read() {
         return;
     }
 
-    const resp = s3_client.get(obj.bucket, obj.object);
+    const resp = pick_client().get(obj.bucket, obj.object);
     if (!resp.success) {
         console.log(resp.error);
     } 
@@ -192,7 +192,7 @@ export function obj_delete() {
         return;
     }
 
-    const resp = s3_client.delete(obj.s3_bucket, obj.s3_key);
+    const resp = pick_client().delete(obj.s3_bucket, obj.s3_key);
     if (!resp.success) {
         console.log(`Error deleting object ${obj.id}: ${resp.error}`);
         return;
