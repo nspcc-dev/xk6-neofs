@@ -10,6 +10,7 @@ This document outlines major changes between releases.
 - Random bucket selection in S3 and gRPC scenarios (#172)
 
 ### Changed
+- ENDPOINT_SELECTION=random selects an endpoint for each request in S3 and gRPC scenarios (#164)
 - Unknown BUCKET_SELECTION and ENDPOINT_SELECTION values are rejected in S3 and gRPC scenarios (#172)
 
 ### Updated
