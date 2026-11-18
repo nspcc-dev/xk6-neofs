@@ -5,6 +5,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"io"
 	"strconv"
 	"time"
 
@@ -107,6 +109,14 @@ func (c *Client) Get(bucket, key string) GetResponse {
 	return GetResponse{Success: true}
 }
 
+// chunkWriter adapts an onDataChunk callback to io.Writer.
+type chunkWriter func(chunk []byte)
+
+func (w chunkWriter) Write(p []byte) (int, error) {
+	w(p)
+	return len(p), nil
+}
+
 func get(
 	ctx context.Context,
 	c *s3.Client,
@@ -114,8 +124,6 @@ func get(
 	key string,
 	onDataChunk func(chunk []byte),
 ) error {
-	var buf = make([]byte, 4*1024)
-
 	obj, err := c.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
@@ -123,16 +131,12 @@ func get(
 	if err != nil {
 		return err
 	}
+	defer obj.Body.Close()
 
-	for {
-		n, err := obj.Body.Read(buf)
-		if n > 0 {
-			onDataChunk(buf[:n])
-		}
-		if err != nil {
-			break
-		}
+	if _, err := io.CopyBuffer(chunkWriter(onDataChunk), obj.Body, make([]byte, 32*1024)); err != nil {
+		return fmt.Errorf("read object body: %w", err)
 	}
+
 	return nil
 }
 

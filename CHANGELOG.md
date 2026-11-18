@@ -10,6 +10,7 @@ This document outlines major changes between releases.
 - Random bucket selection in S3 and gRPC scenarios (#172)
 - Thresholds on the extension's metrics, which were not registered in k6 (#180)
 - data_sent and data_received were not seen by k6 outputs and raced with k6 (#180)
+- S3 GET reported success when reading the body failed, and did not close it (#181)
 
 ### Changed
 - Unknown BUCKET_SELECTION and ENDPOINT_SELECTION values are rejected in S3 and gRPC scenarios (#172)
