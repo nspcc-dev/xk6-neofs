@@ -99,6 +99,17 @@ if (read_vu_count > 0) {
     };
 }
 
+const stat_vu_count = parseInt(__ENV.STATERS || '0');
+if (stat_vu_count > 0) {
+    scenarios.stat = {
+        executor: 'constant-vus',
+        vus: stat_vu_count,
+        duration: `${duration}s`,
+        exec: 'obj_stat',
+        gracefulStop: '5s',
+    };
+}
+
 const delete_vu_count = parseInt(__ENV.DELETERS || '0');
 if (delete_vu_count > 0) {
     if (!obj_to_delete_selector) {
@@ -120,12 +131,13 @@ export const options = {
 };
 
 export function setup() {
-    const total_vu_count = write_vu_count + read_vu_count + delete_vu_count;
+    const total_vu_count = write_vu_count + read_vu_count + stat_vu_count + delete_vu_count;
 
     console.log(`Pregenerated buckets:          ${bucket_list.length}`);
     console.log(`Pregenerated read object size: ${read_size}`);
     console.log(`Pregenerated total objects:    ${obj_list.length}`);
     console.log(`Reading VUs:                   ${read_vu_count}`);
+    console.log(`Statting VUs:                  ${stat_vu_count}`);
     console.log(`Writing VUs:                   ${write_vu_count}`);
     console.log(`Deleting VUs:                  ${delete_vu_count}`);
     console.log(`Total VUs:                     ${total_vu_count}`);
@@ -160,18 +172,22 @@ export function obj_write() {
     }
 }
 
-export function obj_read() {
-    if (__ENV.SLEEP_READ) {
-        sleep(__ENV.SLEEP_READ);
-    }
-
+function select_object() {
     let vu_bucket = bucket;
     if (!vu_bucket) {
         vu_bucket = bucket_list[Math.floor(Math.random() * bucket_list.length)];
     }
 
     const selected_obj_list = obj_list_by_bucket[vu_bucket] || obj_list;
-    const obj = selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)] || obj_list[Math.floor(Math.random() * obj_list.length)];
+    return selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)] || obj_list[Math.floor(Math.random() * obj_list.length)];
+}
+
+export function obj_read() {
+    if (__ENV.SLEEP_READ) {
+        sleep(__ENV.SLEEP_READ);
+    }
+
+    const obj = select_object();
     if (!obj) {
         return;
     }
@@ -180,6 +196,22 @@ export function obj_read() {
     if (!resp.success) {
         console.log(resp.error);
     } 
+}
+
+export function obj_stat() {
+    if (__ENV.SLEEP_STAT) {
+        sleep(__ENV.SLEEP_STAT);
+    }
+
+    const obj = select_object();
+    if (!obj) {
+        return;
+    }
+
+    const resp = s3_client.head(obj.bucket, obj.object);
+    if (!resp.success) {
+        console.log(resp.error);
+    }
 }
 
 export function obj_delete() {

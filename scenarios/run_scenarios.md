@@ -7,12 +7,14 @@
 Scenarios `grpc.js`, `http.js` and `s3.js` support the following options:
   * `DURATION` - duration of scenario in seconds.
   * `READERS` - number of VUs performing read operations.
+  * `STATERS` - number of VUs performing stat (HEAD) operations (gRPC and S3 scenarios only).
   * `WRITERS` - number of VUs performing write operations.
   * `REGISTRY_FILE` - if set, all produced objects will be stored in database for subsequent verification. Database file name will be set to the value of `REGISTRY_FILE`.
   * `WRITE_OBJ_SIZE` - object size in kb for write(PUT) operations.
   * `PREGEN_JSON` - path to json file with pre-generated containers and objects (in case of http scenario we use json pre-generated for grpc scenario).
   * `SLEEP_WRITE` - time interval (in seconds) between writing VU iterations.
   * `SLEEP_READ` - time interval (in seconds) between reading VU iterations.
+  * `SLEEP_STAT` - time interval (in seconds) between statting VU iterations (gRPC and S3 scenarios only).
   * `SELECTION_SIZE` - size of batch to select for deletion (default: 1000).
 
 Examples of how to use these options are provided below for each scenario.
