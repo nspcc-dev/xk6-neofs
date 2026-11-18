@@ -21,18 +21,38 @@ type RootModule struct{}
 
 // S3 represents an instance of the module for every VU.
 type S3 struct {
-	vu modules.VU
+	vu      modules.VU
+	metrics *metricSet
+}
+
+type metricSet struct {
+	objPutTotal, objPutFails, objPutDuration                   *metrics.Metric
+	objGetTotal, objGetFails, objGetDuration                   *metrics.Metric
+	objDeleteTotal, objDeleteFails, objDeleteDuration          *metrics.Metric
+	createBucketTotal, createBucketFails, createBucketDuration *metrics.Metric
+}
+
+func newMetricSet(registry *metrics.Registry) *metricSet {
+	return &metricSet{
+		objPutTotal:          registry.MustNewMetric("aws_obj_put_total", metrics.Counter),
+		objPutFails:          registry.MustNewMetric("aws_obj_put_fails", metrics.Counter),
+		objPutDuration:       registry.MustNewMetric("aws_obj_put_duration", metrics.Trend, metrics.Time),
+		objGetTotal:          registry.MustNewMetric("aws_obj_get_total", metrics.Counter),
+		objGetFails:          registry.MustNewMetric("aws_obj_get_fails", metrics.Counter),
+		objGetDuration:       registry.MustNewMetric("aws_obj_get_duration", metrics.Trend, metrics.Time),
+		objDeleteTotal:       registry.MustNewMetric("aws_obj_delete_total", metrics.Counter),
+		objDeleteFails:       registry.MustNewMetric("aws_obj_delete_fails", metrics.Counter),
+		objDeleteDuration:    registry.MustNewMetric("aws_obj_delete_duration", metrics.Trend, metrics.Time),
+		createBucketTotal:    registry.MustNewMetric("aws_create_bucket_total", metrics.Counter),
+		createBucketFails:    registry.MustNewMetric("aws_create_bucket_fails", metrics.Counter),
+		createBucketDuration: registry.MustNewMetric("aws_create_bucket_duration", metrics.Trend, metrics.Time),
+	}
 }
 
 // Ensure the interfaces are implemented correctly.
 var (
 	_ modules.Instance = &S3{}
 	_ modules.Module   = &RootModule{}
-
-	objPutTotal, objPutFails, objPutDuration                   *metrics.Metric
-	objGetTotal, objGetFails, objGetDuration                   *metrics.Metric
-	objDeleteTotal, objDeleteFails, objDeleteDuration          *metrics.Metric
-	createBucketTotal, createBucketFails, createBucketDuration *metrics.Metric
 )
 
 const defaultAWSRegion = "us-east-1"
@@ -44,8 +64,10 @@ func init() {
 // NewModuleInstance implements the modules.Module interface and returns
 // a new instance for each VU.
 func (r *RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
-	mi := &S3{vu: vu}
-	return mi
+	return &S3{
+		vu:      vu,
+		metrics: newMetricSet(vu.InitEnv().Registry),
+	}
 }
 
 // Exports implements the modules.Instance interface and returns the exports
@@ -96,26 +118,9 @@ func (s *S3) Connect(endpoint string, params map[string]string) (*Client, error)
 		}
 	})
 
-	// register metrics
-	registry := metrics.NewRegistry()
-	objPutTotal, _ = registry.NewMetric("aws_obj_put_total", metrics.Counter)
-	objPutFails, _ = registry.NewMetric("aws_obj_put_fails", metrics.Counter)
-	objPutDuration, _ = registry.NewMetric("aws_obj_put_duration", metrics.Trend, metrics.Time)
-
-	objGetTotal, _ = registry.NewMetric("aws_obj_get_total", metrics.Counter)
-	objGetFails, _ = registry.NewMetric("aws_obj_get_fails", metrics.Counter)
-	objGetDuration, _ = registry.NewMetric("aws_obj_get_duration", metrics.Trend, metrics.Time)
-
-	objDeleteTotal, _ = registry.NewMetric("aws_obj_delete_total", metrics.Counter)
-	objDeleteFails, _ = registry.NewMetric("aws_obj_delete_fails", metrics.Counter)
-	objDeleteDuration, _ = registry.NewMetric("aws_obj_delete_duration", metrics.Trend, metrics.Time)
-
-	createBucketTotal, _ = registry.NewMetric("aws_create_bucket_total", metrics.Counter)
-	createBucketFails, _ = registry.NewMetric("aws_create_bucket_fails", metrics.Counter)
-	createBucketDuration, _ = registry.NewMetric("aws_create_bucket_duration", metrics.Trend, metrics.Time)
-
 	return &Client{
-		vu:  s.vu,
-		cli: cli,
+		vu:      s.vu,
+		metrics: s.metrics,
+		cli:     cli,
 	}, nil
 }
