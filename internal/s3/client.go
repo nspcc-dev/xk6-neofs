@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/http/httptrace"
 	"strconv"
 	"time"
 
@@ -107,7 +108,7 @@ func (c *Client) Get(bucket, key string) GetResponse {
 	start := time.Now()
 
 	var objSize = 0
-	err := get(c.vu.Context(), c.cli, bucket, key, func(chunk []byte) {
+	ttfb, err := get(c.vu.Context(), c.cli, bucket, key, func(chunk []byte) {
 		objSize += len(chunk)
 	})
 	if err != nil {
@@ -116,6 +117,7 @@ func (c *Client) Get(bucket, key string) GetResponse {
 	}
 
 	stats.Report(c.vu, c.metrics.objGetDuration, metrics.D(time.Since(start)))
+	stats.Report(c.vu, c.metrics.objGetTTFB, metrics.D(ttfb))
 	stats.ReportDataReceived(c.vu, float64(objSize))
 	return GetResponse{Success: true}
 }
@@ -151,21 +153,29 @@ func get(
 	bucket string,
 	key string,
 	onDataChunk func(chunk []byte),
-) error {
+) (time.Duration, error) {
+	start := time.Now()
+
+	// The client does not retry (see Connect), so there is one response.
+	var ttfb time.Duration
+	ctx = httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
+		GotFirstResponseByte: func() { ttfb = time.Since(start) },
+	})
+
 	obj, err := c.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer obj.Body.Close()
 
 	if _, err := io.CopyBuffer(chunkWriter(onDataChunk), obj.Body, make([]byte, 32*1024)); err != nil {
-		return fmt.Errorf("read object body: %w", err)
+		return 0, fmt.Errorf("read object body: %w", err)
 	}
 
-	return nil
+	return ttfb, nil
 }
 
 // List lists all objects in the bucket that match the prefix. It follows all
@@ -207,7 +217,7 @@ func (c *Client) List(bucket, prefix string, params map[string]string) ListRespo
 
 func (c *Client) VerifyHash(bucket, key, expectedHash string) VerifyHashResponse {
 	hasher := sha256.New()
-	err := get(c.vu.Context(), c.cli, bucket, key, func(data []byte) {
+	_, err := get(c.vu.Context(), c.cli, bucket, key, func(data []byte) {
 		hasher.Write(data)
 	})
 	if err != nil {

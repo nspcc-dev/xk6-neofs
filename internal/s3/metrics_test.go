@@ -33,6 +33,7 @@ func s3MetricMap(ms *metricSet) map[string]*metrics.Metric {
 		"aws_obj_get_total":          ms.objGetTotal,
 		"aws_obj_get_fails":          ms.objGetFails,
 		"aws_obj_get_duration":       ms.objGetDuration,
+		"aws_obj_get_ttfb":           ms.objGetTTFB,
 		"aws_obj_head_total":         ms.objHeadTotal,
 		"aws_obj_head_fails":         ms.objHeadFails,
 		"aws_obj_head_duration":      ms.objHeadDuration,

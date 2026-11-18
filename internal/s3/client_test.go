@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -173,7 +174,7 @@ func TestGetReturnsErrorOnTruncatedBody(t *testing.T) {
 	defer srv.Close()
 
 	var got int
-	err := get(context.Background(), newTestClient(srv.URL), "bucket", "key", func(chunk []byte) {
+	_, err := get(context.Background(), newTestClient(srv.URL), "bucket", "key", func(chunk []byte) {
 		got += len(chunk)
 	})
 
@@ -195,12 +196,38 @@ func TestGetReadsWholeBody(t *testing.T) {
 	defer srv.Close()
 
 	var got []byte
-	err := get(context.Background(), newTestClient(srv.URL), "bucket", "key", func(chunk []byte) {
+	_, err := get(context.Background(), newTestClient(srv.URL), "bucket", "key", func(chunk []byte) {
 		got = append(got, chunk...)
 	})
 
 	require.NoError(t, err)
 	require.Equal(t, payload, got)
+}
+
+func TestGetReturnsTimeToFirstByte(t *testing.T) {
+	const (
+		headerDelay = 50 * time.Millisecond
+		bodyDelay   = 50 * time.Millisecond
+	)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(headerDelay)
+		w.Header().Set("Content-Length", "7")
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		time.Sleep(bodyDelay)
+		_, _ = w.Write([]byte("payload"))
+	}))
+	defer srv.Close()
+
+	start := time.Now()
+	ttfb, err := get(context.Background(), newTestClient(srv.URL), "bucket", "key", func([]byte) {})
+	total := time.Since(start)
+
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, ttfb, headerDelay)
+	require.Less(t, ttfb, total)
+	require.GreaterOrEqual(t, total, headerDelay+bodyDelay)
 }
 
 func TestHeadReportsSuccess(t *testing.T) {
