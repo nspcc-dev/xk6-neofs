@@ -7,30 +7,27 @@ import (
 	"go.k6.io/k6/metrics"
 )
 
+// Report pushes one sample of the metric, tagged with the VU's current
+// tags, to k6. Samples go through the VU's sample channel, so that k6
+// aggregates them and every output (JSON, CSV, InfluxDB, ...) sees them.
 func Report(vu modules.VU, metric *metrics.Metric, value float64) {
-	metrics.PushIfNotDone(vu.Context(), vu.State().Samples, metrics.Sample{
+	state := vu.State()
+	metrics.PushIfNotDone(vu.Context(), state.Samples, metrics.Sample{
 		TimeSeries: metrics.TimeSeries{
 			Metric: metric,
-			Tags:   vu.State().Tags.GetCurrentValues().Tags,
+			Tags:   state.Tags.GetCurrentValues().Tags,
 		},
 		Time:  time.Now(),
 		Value: value,
 	})
 }
 
+// ReportDataReceived reports payload bytes received as k6's data_received.
 func ReportDataReceived(vu modules.VU, value float64) {
-	vu.State().BuiltinMetrics.DataReceived.Sink.Add(
-		metrics.Sample{
-			Value: value,
-			Time:  time.Now()},
-	)
+	Report(vu, vu.State().BuiltinMetrics.DataReceived, value)
 }
 
+// ReportDataSent reports payload bytes sent as k6's data_sent.
 func ReportDataSent(vu modules.VU, value float64) {
-	state := vu.State()
-	state.BuiltinMetrics.DataSent.Sink.Add(
-		metrics.Sample{
-			Value: value,
-			Time:  time.Now()},
-	)
+	Report(vu, vu.State().BuiltinMetrics.DataSent, value)
 }
