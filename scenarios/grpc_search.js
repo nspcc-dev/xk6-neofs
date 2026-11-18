@@ -18,6 +18,7 @@ export const options = {
             gracefulStop: '30s',
         },
     },
+    summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
 };
 
 export function search() {
