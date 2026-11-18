@@ -131,19 +131,18 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 		panic(err)
 	}
 
-	stats.Report(c.vu, c.metrics.objDeleteTotal, 1)
-	start := time.Now()
+	req := stats.Start(c.vu, c.metrics.objDeleteTotal)
 
 	var prm client.PrmObjectDelete
 	prm.WithinSession(tok)
 
 	_, err = c.cli.ObjectDelete(c.vu.Context(), cliContainerID, cliObjectID, c.signer, prm)
 	if err != nil {
-		stats.Report(c.vu, c.metrics.objDeleteFails, 1)
+		req.Fail(c.metrics.objDeleteFails)
 		return DeleteResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, c.metrics.objDeleteDuration, metrics.D(time.Since(start)))
+	req.Done(c.metrics.objDeleteDuration)
 	return DeleteResponse{Success: true}
 }
 
@@ -168,8 +167,7 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 		panic(err)
 	}
 
-	stats.Report(c.vu, c.metrics.objGetTotal, 1)
-	start := time.Now()
+	req := stats.Start(c.vu, c.metrics.objGetTotal)
 
 	var prm client.PrmObjectGet
 	prm.WithinSession(tok)
@@ -178,16 +176,16 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 	var objSize sizeCounter
 	ttfb, ttfbBody, err := get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, &objSize)
 	if err != nil {
-		stats.Report(c.vu, c.metrics.objGetFails, 1)
+		req.Fail(c.metrics.objGetFails)
 		return GetResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, c.metrics.objGetDuration, metrics.D(time.Since(start)))
-	stats.Report(c.vu, c.metrics.objGetTTFB, metrics.D(ttfb))
+	req.Add(c.metrics.objGetTTFB, metrics.D(ttfb))
 	if ttfbBody > 0 {
-		stats.Report(c.vu, c.metrics.objGetTTFBBody, metrics.D(ttfbBody))
+		req.Add(c.metrics.objGetTTFBBody, metrics.D(ttfbBody))
 	}
-	stats.ReportDataReceived(c.vu, float64(objSize))
+	req.AddDataReceived(int64(objSize))
+	req.Done(c.metrics.objGetDuration)
 	return GetResponse{Success: true}
 }
 
@@ -204,19 +202,18 @@ func (c *Client) Head(containerID, objectID string) HeadResponse {
 		panic(err)
 	}
 
-	stats.Report(c.vu, c.metrics.objHeadTotal, 1)
-	start := time.Now()
+	req := stats.Start(c.vu, c.metrics.objHeadTotal)
 
 	var prm client.PrmObjectHead
 	prm.WithinSession(tok)
 
 	_, err = c.cli.ObjectHead(c.vu.Context(), cliContainerID, cliObjectID, c.signer, prm)
 	if err != nil {
-		stats.Report(c.vu, c.metrics.objHeadFails, 1)
+		req.Fail(c.metrics.objHeadFails)
 		return HeadResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, c.metrics.objHeadDuration, metrics.D(time.Since(start)))
+	req.Done(c.metrics.objHeadDuration)
 	return HeadResponse{Success: true}
 }
 
@@ -265,15 +262,14 @@ func (c *Client) List(containerID, prefix string) ListResponse {
 		attrs = []string{object.AttributeFilePath}
 	}
 
-	stats.Report(c.vu, c.metrics.objListTotal, 1)
-	start := time.Now()
+	req := stats.Start(c.vu, c.metrics.objListTotal)
 
 	var count int
 	var cursor string
 	for {
 		items, next, err := c.cli.SearchObjects(c.vu.Context(), cliContainerID, filters, attrs, cursor, c.signer, client.SearchObjectsOptions{})
 		if err != nil {
-			stats.Report(c.vu, c.metrics.objListFails, 1)
+			req.Fail(c.metrics.objListFails)
 			return ListResponse{Success: false, Error: err.Error()}
 		}
 
@@ -284,7 +280,7 @@ func (c *Client) List(containerID, prefix string) ListResponse {
 		cursor = next
 	}
 
-	stats.Report(c.vu, c.metrics.objListDuration, metrics.D(time.Since(start)))
+	req.Done(c.metrics.objListDuration)
 	return ListResponse{Success: true, Count: count}
 }
 
@@ -318,13 +314,13 @@ func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHa
 	return VerifyHashResponse{Success: true}
 }
 
-func (c *Client) putCnrErrorResponse(err error) PutContainerResponse {
-	stats.Report(c.vu, c.metrics.cnrPutFails, 1)
+func (c *Client) putCnrErrorResponse(req *stats.Request, err error) PutContainerResponse {
+	req.Fail(c.metrics.cnrPutFails)
 	return PutContainerResponse{Success: false, Error: err.Error()}
 }
 
 func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
-	stats.Report(c.vu, c.metrics.cnrPutTotal, 1)
+	req := stats.Start(c.vu, c.metrics.cnrPutTotal)
 
 	var cnr container.Container
 	cnr.Init()
@@ -336,7 +332,7 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 		var basicACL acl.Basic
 		err := basicACL.DecodeString(basicACLStr)
 		if err != nil {
-			return c.putCnrErrorResponse(err)
+			return c.putCnrErrorResponse(req, err)
 		}
 
 		cnr.SetBasicACL(basicACL)
@@ -347,7 +343,7 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 		var placementPolicy netmap.PlacementPolicy
 		err := placementPolicy.DecodeString(placementPolicyStr)
 		if err != nil {
-			return c.putCnrErrorResponse(err)
+			return c.putCnrErrorResponse(req, err)
 		}
 
 		cnr.SetPlacementPolicy(placementPolicy)
@@ -362,13 +358,13 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 	var nameScopeGlobal bool
 	if nameScopeGlobalStr, ok := params["name_scope_global"]; ok {
 		if nameScopeGlobal, err = strconv.ParseBool(nameScopeGlobalStr); err != nil {
-			return c.putCnrErrorResponse(fmt.Errorf("invalid name_scope_global param: %w", err))
+			return c.putCnrErrorResponse(req, fmt.Errorf("invalid name_scope_global param: %w", err))
 		}
 	}
 
 	if nameScopeGlobal {
 		if !hasName {
-			return c.putCnrErrorResponse(errors.New("you must provide container name if name_scope_global param is set"))
+			return c.putCnrErrorResponse(req, errors.New("you must provide container name if name_scope_global param is set"))
 		}
 
 		var domain container.Domain
@@ -377,21 +373,19 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 		cnr.WriteDomain(domain)
 	}
 
-	start := time.Now()
-
 	contID, err := c.cli.ContainerPut(c.vu.Context(), cnr, c.signer, client.PrmContainerPut{})
 	if err != nil {
-		return c.putCnrErrorResponse(err)
+		return c.putCnrErrorResponse(req, err)
 	}
 
 	var wp waitParams
 	wp.setDefaults()
 
 	if err = c.waitForContainerPresence(c.vu.Context(), contID, &wp); err != nil {
-		return c.putCnrErrorResponse(err)
+		return c.putCnrErrorResponse(req, err)
 	}
 
-	stats.Report(c.vu, c.metrics.cnrPutDuration, metrics.D(time.Since(start)))
+	req.Done(c.metrics.cnrPutDuration)
 	return PutContainerResponse{Success: true, ContainerID: contID.EncodeToString()}
 }
 
@@ -526,8 +520,7 @@ func put(vu modules.VU, ms *metricSet, cli *client.Client, tok *session.Object, 
 	sz := rdr.Size()
 
 	// starting upload
-	stats.Report(vu, ms.objPutTotal, 1)
-	start := time.Now()
+	req := stats.Start(vu, ms.objPutTotal)
 
 	var prm client.PrmObjectPutInit
 	if tok != nil {
@@ -536,23 +529,23 @@ func put(vu modules.VU, ms *metricSet, cli *client.Client, tok *session.Object, 
 
 	objectWriter, err := cli.ObjectPutInit(vu.Context(), *hdr, signer, prm)
 	if err != nil {
-		stats.Report(vu, ms.objPutFails, 1)
+		req.Fail(ms.objPutFails)
 		return nil, err
 	}
 
 	_, err = objectWriter.ReadFrom(rdr)
 	if err != nil {
-		stats.Report(vu, ms.objPutFails, 1)
+		req.Fail(ms.objPutFails)
 		return nil, fmt.Errorf("copy payload chunk: %w", err)
 	}
 
 	if err = objectWriter.Close(); err != nil {
-		stats.Report(vu, ms.objPutFails, 1)
+		req.Fail(ms.objPutFails)
 		return nil, fmt.Errorf("writer close: %w", err)
 	}
 
-	stats.ReportDataSent(vu, float64(sz))
-	stats.Report(vu, ms.objPutDuration, metrics.D(time.Since(start)))
+	req.AddDataSent(sz)
+	req.Done(ms.objPutDuration)
 
 	res := objectWriter.GetResult()
 	return &res, err
