@@ -5,6 +5,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"io"
 	"strconv"
 	"time"
 
@@ -93,10 +95,7 @@ func (c *Client) Get(bucket, key string) GetResponse {
 	stats.Report(c.vu, c.metrics.objGetTotal, 1)
 	start := time.Now()
 
-	var objSize = 0
-	err := get(c.vu.Context(), c.cli, bucket, key, func(chunk []byte) {
-		objSize += len(chunk)
-	})
+	objSize, err := get(c.vu.Context(), c.cli, bucket, key, io.Discard)
 	if err != nil {
 		stats.Report(c.vu, c.metrics.objGetFails, 1)
 		return GetResponse{Success: false, Error: err.Error()}
@@ -112,35 +111,28 @@ func get(
 	c *s3.Client,
 	bucket string,
 	key string,
-	onDataChunk func(chunk []byte),
-) error {
-	var buf = make([]byte, 4*1024)
-
+	w io.Writer,
+) (int64, error) {
 	obj, err := c.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return err
+		return 0, err
+	}
+	defer obj.Body.Close()
+
+	n, err := io.Copy(w, obj.Body)
+	if err != nil {
+		return n, fmt.Errorf("read object body: %w", err)
 	}
 
-	for {
-		n, err := obj.Body.Read(buf)
-		if n > 0 {
-			onDataChunk(buf[:n])
-		}
-		if err != nil {
-			break
-		}
-	}
-	return nil
+	return n, nil
 }
 
 func (c *Client) VerifyHash(bucket, key, expectedHash string) VerifyHashResponse {
 	hasher := sha256.New()
-	err := get(c.vu.Context(), c.cli, bucket, key, func(data []byte) {
-		hasher.Write(data)
-	})
+	_, err := get(c.vu.Context(), c.cli, bucket, key, hasher)
 	if err != nil {
 		return VerifyHashResponse{Success: false, Error: err.Error()}
 	}
