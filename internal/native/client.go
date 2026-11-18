@@ -29,11 +29,12 @@ import (
 
 type (
 	Client struct {
-		vu     modules.VU
-		signer user.Signer
-		owner  user.ID
-		tok    session.Object
-		cli    *client.Client
+		vu      modules.VU
+		metrics *metricSet
+		signer  user.Signer
+		owner   user.ID
+		tok     session.Object
+		cli     *client.Client
 	}
 
 	PutResponse struct {
@@ -64,9 +65,10 @@ type (
 	}
 
 	PreparedObject struct {
-		vu     modules.VU
-		signer user.Signer
-		cli    *client.Client
+		vu      modules.VU
+		metrics *metricSet
+		signer  user.Signer
+		cli     *client.Client
 
 		hdr     object.Object
 		payload []byte
@@ -97,7 +99,7 @@ func (c *Client) Put(containerID string, headers map[string]string, payload sobe
 	o.SetOwner(c.owner)
 	o.SetAttributes(attrs...)
 
-	resp, err := put(c.vu, c.cli, &tok, c.signer, &o, payload.Bytes())
+	resp, err := put(c.vu, c.metrics, c.cli, &tok, c.signer, &o, payload.Bytes())
 	if err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
@@ -118,7 +120,7 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 		panic(err)
 	}
 
-	stats.Report(c.vu, objDeleteTotal, 1)
+	stats.Report(c.vu, c.metrics.objDeleteTotal, 1)
 	start := time.Now()
 
 	var prm client.PrmObjectDelete
@@ -126,11 +128,11 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 
 	_, err = c.cli.ObjectDelete(c.vu.Context(), cliContainerID, cliObjectID, c.signer, prm)
 	if err != nil {
-		stats.Report(c.vu, objDeleteFails, 1)
+		stats.Report(c.vu, c.metrics.objDeleteFails, 1)
 		return DeleteResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, objDeleteDuration, metrics.D(time.Since(start)))
+	stats.Report(c.vu, c.metrics.objDeleteDuration, metrics.D(time.Since(start)))
 	return DeleteResponse{Success: true}
 }
 
@@ -155,7 +157,7 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 		panic(err)
 	}
 
-	stats.Report(c.vu, objGetTotal, 1)
+	stats.Report(c.vu, c.metrics.objGetTotal, 1)
 	start := time.Now()
 
 	var prm client.PrmObjectGet
@@ -165,11 +167,11 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 	var objSize sizeCounter
 	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, &objSize)
 	if err != nil {
-		stats.Report(c.vu, objGetFails, 1)
+		stats.Report(c.vu, c.metrics.objGetFails, 1)
 		return GetResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, objGetDuration, metrics.D(time.Since(start)))
+	stats.Report(c.vu, c.metrics.objGetDuration, metrics.D(time.Since(start)))
 	stats.ReportDataReceived(c.vu, float64(objSize))
 	return GetResponse{Success: true}
 }
@@ -232,12 +234,12 @@ func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHa
 }
 
 func (c *Client) putCnrErrorResponse(err error) PutContainerResponse {
-	stats.Report(c.vu, cnrPutFails, 1)
+	stats.Report(c.vu, c.metrics.cnrPutFails, 1)
 	return PutContainerResponse{Success: false, Error: err.Error()}
 }
 
 func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
-	stats.Report(c.vu, cnrPutTotal, 1)
+	stats.Report(c.vu, c.metrics.cnrPutTotal, 1)
 
 	var cnr container.Container
 	cnr.Init()
@@ -304,7 +306,7 @@ func (c *Client) PutContainer(params map[string]string) PutContainerResponse {
 		return c.putCnrErrorResponse(err)
 	}
 
-	stats.Report(c.vu, cnrPutDuration, metrics.D(time.Since(start)))
+	stats.Report(c.vu, c.metrics.cnrPutDuration, metrics.D(time.Since(start)))
 	return PutContainerResponse{Success: true, ContainerID: contID.EncodeToString()}
 }
 
@@ -360,7 +362,7 @@ func (c *Client) Search(cnrString string, filtersJS []Filter) (int, error) {
 		relativeTime = time.Since(start) / time.Duration(objsNum)
 	}
 
-	stats.Report(c.vu, objSearchDurationRelative, metrics.D(relativeTime))
+	stats.Report(c.vu, c.metrics.objSearchDurationRelative, metrics.D(relativeTime))
 
 	return objsNum, nil
 }
@@ -393,9 +395,10 @@ func (c *Client) Onsite(containerID string, payload sobek.ArrayBuffer) PreparedO
 	obj.SetPayloadChecksum(object.CalculatePayloadChecksum(data))
 
 	return PreparedObject{
-		vu:     c.vu,
-		signer: c.signer,
-		cli:    c.cli,
+		vu:      c.vu,
+		metrics: c.metrics,
+		signer:  c.signer,
+		cli:     c.cli,
 
 		hdr:     *obj,
 		payload: data,
@@ -424,7 +427,7 @@ func (p PreparedObject) Put(headers map[string]string) PutResponse {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
 
-	_, err = put(p.vu, p.cli, nil, p.signer, &obj, p.payload)
+	_, err = put(p.vu, p.metrics, p.cli, nil, p.signer, &obj, p.payload)
 	if err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
@@ -432,13 +435,13 @@ func (p PreparedObject) Put(headers map[string]string) PutResponse {
 	return PutResponse{Success: true, ObjectID: id.String()}
 }
 
-func put(vu modules.VU, cli *client.Client, tok *session.Object, signer user.Signer,
+func put(vu modules.VU, ms *metricSet, cli *client.Client, tok *session.Object, signer user.Signer,
 	hdr *object.Object, payload []byte) (*client.ResObjectPut, error) {
 	rdr := bytes.NewReader(payload)
 	sz := rdr.Size()
 
 	// starting upload
-	stats.Report(vu, objPutTotal, 1)
+	stats.Report(vu, ms.objPutTotal, 1)
 	start := time.Now()
 
 	var prm client.PrmObjectPutInit
@@ -448,23 +451,23 @@ func put(vu modules.VU, cli *client.Client, tok *session.Object, signer user.Sig
 
 	objectWriter, err := cli.ObjectPutInit(vu.Context(), *hdr, signer, prm)
 	if err != nil {
-		stats.Report(vu, objPutFails, 1)
+		stats.Report(vu, ms.objPutFails, 1)
 		return nil, err
 	}
 
 	_, err = objectWriter.ReadFrom(rdr)
 	if err != nil {
-		stats.Report(vu, objPutFails, 1)
+		stats.Report(vu, ms.objPutFails, 1)
 		return nil, fmt.Errorf("copy payload chunk: %w", err)
 	}
 
 	if err = objectWriter.Close(); err != nil {
-		stats.Report(vu, objPutFails, 1)
+		stats.Report(vu, ms.objPutFails, 1)
 		return nil, fmt.Errorf("writer close: %w", err)
 	}
 
 	stats.ReportDataSent(vu, float64(sz))
-	stats.Report(vu, objPutDuration, metrics.D(time.Since(start)))
+	stats.Report(vu, ms.objPutDuration, metrics.D(time.Since(start)))
 
 	res := objectWriter.GetResult()
 	return &res, err

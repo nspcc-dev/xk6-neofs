@@ -19,8 +19,9 @@ import (
 
 type (
 	Client struct {
-		vu  modules.VU
-		cli *s3.Client
+		vu      modules.VU
+		metrics *metricSet
+		cli     *s3.Client
 	}
 
 	PutResponse struct {
@@ -53,7 +54,7 @@ func (c *Client) Put(bucket, key string, payload sobek.ArrayBuffer) PutResponse 
 	rdr := bytes.NewReader(payload.Bytes())
 	sz := rdr.Size()
 
-	stats.Report(c.vu, objPutTotal, 1)
+	stats.Report(c.vu, c.metrics.objPutTotal, 1)
 
 	start := time.Now()
 	_, err := c.cli.PutObject(c.vu.Context(), &s3.PutObjectInput{
@@ -62,17 +63,17 @@ func (c *Client) Put(bucket, key string, payload sobek.ArrayBuffer) PutResponse 
 		Body:   rdr,
 	})
 	if err != nil {
-		stats.Report(c.vu, objPutFails, 1)
+		stats.Report(c.vu, c.metrics.objPutFails, 1)
 		return PutResponse{Success: false, Error: err.Error()}
 	}
 
 	stats.ReportDataSent(c.vu, float64(sz))
-	stats.Report(c.vu, objPutDuration, metrics.D(time.Since(start)))
+	stats.Report(c.vu, c.metrics.objPutDuration, metrics.D(time.Since(start)))
 	return PutResponse{Success: true}
 }
 
 func (c *Client) Delete(bucket, key string) DeleteResponse {
-	stats.Report(c.vu, objDeleteTotal, 1)
+	stats.Report(c.vu, c.metrics.objDeleteTotal, 1)
 	start := time.Now()
 
 	_, err := c.cli.DeleteObject(c.vu.Context(), &s3.DeleteObjectInput{
@@ -80,16 +81,16 @@ func (c *Client) Delete(bucket, key string) DeleteResponse {
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		stats.Report(c.vu, objDeleteFails, 1)
+		stats.Report(c.vu, c.metrics.objDeleteFails, 1)
 		return DeleteResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, objDeleteDuration, metrics.D(time.Since(start)))
+	stats.Report(c.vu, c.metrics.objDeleteDuration, metrics.D(time.Since(start)))
 	return DeleteResponse{Success: true}
 }
 
 func (c *Client) Get(bucket, key string) GetResponse {
-	stats.Report(c.vu, objGetTotal, 1)
+	stats.Report(c.vu, c.metrics.objGetTotal, 1)
 	start := time.Now()
 
 	var objSize = 0
@@ -97,11 +98,11 @@ func (c *Client) Get(bucket, key string) GetResponse {
 		objSize += len(chunk)
 	})
 	if err != nil {
-		stats.Report(c.vu, objGetFails, 1)
+		stats.Report(c.vu, c.metrics.objGetFails, 1)
 		return GetResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, objGetDuration, metrics.D(time.Since(start)))
+	stats.Report(c.vu, c.metrics.objGetDuration, metrics.D(time.Since(start)))
 	stats.ReportDataReceived(c.vu, float64(objSize))
 	return GetResponse{Success: true}
 }
@@ -152,13 +153,13 @@ func (c *Client) VerifyHash(bucket, key, expectedHash string) VerifyHashResponse
 }
 
 func (c *Client) CreateBucket(bucket string, params map[string]string) CreateBucketResponse {
-	stats.Report(c.vu, createBucketTotal, 1)
+	stats.Report(c.vu, c.metrics.createBucketTotal, 1)
 
 	var err error
 	var lockEnabled bool
 	if lockEnabledStr, ok := params["lock_enabled"]; ok {
 		if lockEnabled, err = strconv.ParseBool(lockEnabledStr); err != nil {
-			stats.Report(c.vu, createBucketFails, 1)
+			stats.Report(c.vu, c.metrics.createBucketFails, 1)
 			return CreateBucketResponse{Success: false, Error: "invalid lock_enabled params"}
 		}
 	}
@@ -178,10 +179,10 @@ func (c *Client) CreateBucket(bucket string, params map[string]string) CreateBuc
 		ObjectLockEnabledForBucket: &lockEnabled,
 	})
 	if err != nil {
-		stats.Report(c.vu, createBucketFails, 1)
+		stats.Report(c.vu, c.metrics.createBucketFails, 1)
 		return CreateBucketResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, createBucketDuration, metrics.D(time.Since(start)))
+	stats.Report(c.vu, c.metrics.createBucketDuration, metrics.D(time.Since(start)))
 	return CreateBucketResponse{Success: true}
 }
