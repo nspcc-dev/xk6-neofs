@@ -86,6 +86,11 @@ const neofs_cli = native.connect("s01.neofs.devenv:8080", "", 0, 0)
   flag, and `error` string.
 - `head(container_id, object_id)`. Returns dictionary with `success` boolean
   flag, and `error` string.
+- `list(container_id, prefix)`. Lists objects in the container whose `FilePath`
+  attribute starts with the prefix, following all pages of the listing. Returns
+  dictionary with `success` boolean flag, `count` integer and `error` string.
+  Empty `prefix` lists all root objects of the container, that is without
+  tombstones, locks, links and the parts of split objects.
 - `onsite(container_id, payload)`. Returns NeoFS object instance with prepared
   headers. Invoke `put(headers)` method on this object to upload it into NeoFS.
   It returns dictionary with `success` boolean flag, `object_id` string and
@@ -121,6 +126,12 @@ const s3_cli = s3.connect("http://s3.neofs.devenv:8080", {'no_verify_ssl': 'true
   string.
 - `head(bucket, key)`. Returns dictionary with `success` boolean flag and `error`
   string.
+- `list(bucket, prefix[, params])`. Lists objects in the bucket under the prefix,
+  following all pages of the listing. Returns dictionary with `success` boolean
+  flag, `count` integer and `error` string. Empty `prefix` lists the whole
+  bucket. `params` may set `fetch_owner` to `'true'` to ask for the owner of
+  every object, as minio-go clients such as warp always do; the gateway then
+  has to look owners up, which makes listings slower.
 
 # Examples
 

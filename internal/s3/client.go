@@ -46,6 +46,12 @@ type (
 		Error   string
 	}
 
+	ListResponse struct {
+		Success bool
+		Error   string
+		Count   int
+	}
+
 	CreateBucketResponse struct {
 		Success bool
 		Error   string
@@ -150,6 +156,43 @@ func get(
 	}
 
 	return n, nil
+}
+
+// List lists all objects in the bucket that match the prefix. It follows all
+// pages of the listing, so one call is one complete listing.
+//
+// params may set fetch_owner to "true" to ask for the owner of every object,
+// as minio-go clients (warp among them) always do. It is not free: the
+// gateway has to look the owners up.
+func (c *Client) List(bucket, prefix string, params map[string]string) ListResponse {
+	input := &s3.ListObjectsV2Input{Bucket: aws.String(bucket)}
+	if prefix != "" {
+		input.Prefix = aws.String(prefix)
+	}
+	if v, ok := params["fetch_owner"]; ok {
+		fetchOwner, err := strconv.ParseBool(v)
+		if err != nil {
+			return ListResponse{Success: false, Error: fmt.Sprintf("invalid fetch_owner param: %v", err)}
+		}
+		input.FetchOwner = aws.Bool(fetchOwner)
+	}
+
+	stats.Report(c.vu, c.metrics.objListTotal, 1)
+	start := time.Now()
+
+	var count int
+	paginator := s3.NewListObjectsV2Paginator(c.cli, input)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(c.vu.Context())
+		if err != nil {
+			stats.Report(c.vu, c.metrics.objListFails, 1)
+			return ListResponse{Success: false, Error: err.Error()}
+		}
+		count += len(page.Contents)
+	}
+
+	stats.Report(c.vu, c.metrics.objListDuration, metrics.D(time.Since(start)))
+	return ListResponse{Success: true, Count: count}
 }
 
 func (c *Client) VerifyHash(bucket, key, expectedHash string) VerifyHashResponse {

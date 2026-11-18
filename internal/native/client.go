@@ -58,6 +58,12 @@ type (
 		Error   string
 	}
 
+	ListResponse struct {
+		Success bool
+		Error   string
+		Count   int
+	}
+
 	VerifyHashResponse struct {
 		Success bool
 		Error   string
@@ -236,6 +242,47 @@ func get(
 	}
 
 	return nil
+}
+
+// List lists the objects in the container: those whose FilePath attribute
+// starts with the prefix, or all of them if the prefix is empty. Either way
+// these are root objects only, without tombstones, locks, links and the parts
+// of split objects. It follows all pages of the search response, so one call
+// is one complete listing.
+func (c *Client) List(containerID, prefix string) ListResponse {
+	cliContainerID := parseContainerID(containerID)
+
+	var filters object.SearchFilters
+	var attrs []string
+	if prefix != "" {
+		// Only root objects carry FilePath, so this needs no ROOT filter.
+		filters.AddFilter(object.AttributeFilePath, prefix, object.MatchCommonPrefix)
+		attrs = []string{object.AttributeFilePath}
+	} else {
+		filters.AddRootFilter()
+	}
+
+	stats.Report(c.vu, c.metrics.objListTotal, 1)
+	start := time.Now()
+
+	var count int
+	var cursor string
+	for {
+		items, next, err := c.cli.SearchObjects(c.vu.Context(), cliContainerID, filters, attrs, cursor, c.signer, client.SearchObjectsOptions{})
+		if err != nil {
+			stats.Report(c.vu, c.metrics.objListFails, 1)
+			return ListResponse{Success: false, Error: err.Error()}
+		}
+
+		count += len(items)
+		if next == "" {
+			break
+		}
+		cursor = next
+	}
+
+	stats.Report(c.vu, c.metrics.objListDuration, metrics.D(time.Since(start)))
+	return ListResponse{Success: true, Count: count}
 }
 
 func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHashResponse {
