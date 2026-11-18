@@ -50,6 +50,9 @@ Options (in addition to the common options):
   * `GRPC_ENDPOINTS` - GRPC endpoints of neoFS in format `host:port`. To specify multiple endpoints separate them by comma.
   * `ENDPOINT_SELECTION` - endpoint selection algorithm for VUs. Possible values: `random` (default), `round-robin`; any other value is an error.
   * `BUCKET_SELECTION` - container selection algorithm for VU's object write and read operations. Possible values: `random` (default), `round-robin`; any other value is an error.
+  * `LISTERS` - number of VUs performing list operations.
+  * `SLEEP_LIST` - time interval (in seconds) between listing VU iterations.
+  * `LIST_PREFIX` - prefix to list. The default is empty, which lists the whole container. One LIST iteration follows all pages, so its duration grows with the number of objects.
   * `DELETERS` - number of VUs performing delete operations (using deleters requires that options `DELETE_AGE` and `REGISTRY_FILE` are specified as well).
   * `DELETE_AGE` - age of object in seconds before which it can not be deleted. This parameter can be used to control how many objects we have in the system under load.
   * `SLEEP_DELETE` - time interval (in seconds) between deleting VU iterations.
@@ -112,6 +115,9 @@ Options (in addition to the common options):
   * `S3_ENDPOINTS` - endpoints of S3 gateways in format `host:port`. To specify multiple endpoints separate them by comma.
   * `ENDPOINT_SELECTION` - endpoint selection algorithm for VUs. Possible values: `random` (default), `round-robin`; any other value is an error.
   * `BUCKET_SELECTION` - bucket selection algorithm for VU's object write and read operations. Possible values: `random` (default), `round-robin`; any other value is an error.
+  * `LISTERS` - number of VUs performing list operations.
+  * `SLEEP_LIST` - time interval (in seconds) between listing VU iterations.
+  * `LIST_PREFIX` - prefix to list. The default is empty, which lists the whole bucket. One LIST iteration follows all pages, so its duration grows with the number of objects.
   * `DELETERS` - number of VUs performing delete operations (using deleters requires that options `DELETE_AGE` and `REGISTRY_FILE` are specified as well).
   * `DELETE_AGE` - age of object in seconds before which it can not be deleted. This parameter can be used to control how many objects we have in the system under load.
   * `SLEEP_DELETE` - time interval (in seconds) between deleting VU iterations.

@@ -4,7 +4,7 @@ import registry from 'k6/x/neofs/registry';
 import { SharedArray } from 'k6/data';
 import { sleep } from 'k6';
 
-const obj_list = new SharedArray('obj_list', function () {
+const object_list = new SharedArray('obj_list', function () {
     return JSON.parse(open(__ENV.PREGEN_JSON)).objects;
 });
 
@@ -13,7 +13,7 @@ const container_list = new SharedArray('container_list', function () {
 });
 
 const obj_list_by_container = {};
-for (const obj of obj_list) {
+for (const obj of object_list) {
     if (!obj_list_by_container[obj.container]) {
         obj_list_by_container[obj.container] = [];
     }
@@ -57,6 +57,7 @@ const registry_enabled = !!__ENV.REGISTRY_FILE;
 const obj_registry = registry_enabled ? registry.open(__ENV.REGISTRY_FILE) : undefined;
 
 const duration = __ENV.DURATION;
+const list_prefix = __ENV.LIST_PREFIX || '';
 
 const delete_age = __ENV.DELETE_AGE ? parseInt(__ENV.DELETE_AGE) : undefined;
 let obj_to_delete_selector = undefined;
@@ -110,6 +111,17 @@ if (stat_vu_count > 0) {
     };
 }
 
+const list_vu_count = parseInt(__ENV.LISTERS || '0');
+if (list_vu_count > 0) {
+    scenarios.list = {
+        executor: 'constant-vus',
+        vus: list_vu_count,
+        duration: `${duration}s`,
+        exec: 'obj_list',
+        gracefulStop: '5s',
+    };
+}
+
 const delete_vu_count = parseInt(__ENV.DELETERS || '0');
 if (delete_vu_count > 0) {
     if (!obj_to_delete_selector) {
@@ -131,13 +143,14 @@ export const options = {
 };
 
 export function setup() {
-    const total_vu_count = write_vu_count + read_vu_count + stat_vu_count + delete_vu_count;
+    const total_vu_count = write_vu_count + read_vu_count + stat_vu_count + list_vu_count + delete_vu_count;
 
     console.log(`Pregenerated containers:       ${container_list.length}`);
     console.log(`Pregenerated read object size: ${read_size}`);
-    console.log(`Pregenerated total objects:    ${obj_list.length}`);
+    console.log(`Pregenerated total objects:    ${object_list.length}`);
     console.log(`Reading VUs:                   ${read_vu_count}`);
     console.log(`Statting VUs:                  ${stat_vu_count}`);
+    console.log(`Listing VUs:                   ${list_vu_count}`);
     console.log(`Writing VUs:                   ${write_vu_count}`);
     console.log(`Deleting VUs:                  ${delete_vu_count}`);
     console.log(`Total VUs:                     ${total_vu_count}`);
@@ -149,6 +162,10 @@ export function teardown(data) {
     }
 }
 
+function select_container() {
+    return container || container_list[Math.floor(Math.random() * container_list.length)];
+}
+
 export function obj_write() {
     if (__ENV.SLEEP_WRITE) {
         sleep(__ENV.SLEEP_WRITE);
@@ -157,10 +174,7 @@ export function obj_write() {
     const headers = {
         unique_header: uuidv4()
     };
-    let vu_container = container;
-    if (!vu_container) {
-        vu_container = container_list[Math.floor(Math.random() * container_list.length)];
-    }
+    const vu_container = select_container();
 
     const { payload, hash } = generator.genPayload(registry_enabled);
     const resp = grpc_client.put(vu_container, headers, payload);
@@ -175,13 +189,10 @@ export function obj_write() {
 }
 
 function select_object() {
-    let vu_container = container;
-    if (!vu_container) {
-        vu_container = container_list[Math.floor(Math.random() * container_list.length)];
-    }
+    const vu_container = select_container();
 
-    const selected_obj_list = obj_list_by_container[vu_container] || obj_list;
-    return selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)] || obj_list[Math.floor(Math.random() * obj_list.length)];
+    const selected_obj_list = obj_list_by_container[vu_container] || object_list;
+    return selected_obj_list[Math.floor(Math.random() * selected_obj_list.length)] || object_list[Math.floor(Math.random() * object_list.length)];
 }
 
 export function obj_read() {
@@ -213,6 +224,18 @@ export function obj_stat() {
     const resp = grpc_client.head(obj.container, obj.object)
     if (!resp.success) {
         console.log({cid: obj.container, oid: obj.object, error: resp.error});
+    }
+}
+
+export function obj_list() {
+    if (__ENV.SLEEP_LIST) {
+        sleep(__ENV.SLEEP_LIST);
+    }
+
+    const vu_container = select_container();
+    const resp = grpc_client.list(vu_container, list_prefix);
+    if (!resp.success) {
+        console.log({cid: vu_container, error: resp.error});
     }
 }
 
