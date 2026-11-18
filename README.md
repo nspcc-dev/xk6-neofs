@@ -84,6 +84,8 @@ const neofs_cli = native.connect("s01.neofs.devenv:8080", "", 0, 0)
   boolean flag, `object_id` string, and `error` string.
 - `get(container_id, object_id)`. Returns dictionary with `success` boolean
   flag, and `error` string.
+- `head(container_id, object_id)`. Returns dictionary with `success` boolean
+  flag, and `error` string.
 - `onsite(container_id, payload)`. Returns NeoFS object instance with prepared
   headers. Invoke `put(headers)` method on this object to upload it into NeoFS.
   It returns dictionary with `success` boolean flag, `object_id` string and
@@ -116,6 +118,8 @@ const s3_cli = s3.connect("http://s3.neofs.devenv:8080", {'no_verify_ssl': 'true
 - `put(bucket, key, payload)`. Returns dictionary with `success` boolean flag 
   and `error` string.
 - `get(bucket, key)`. Returns dictionary with `success` boolean flag and `error`
+  string.
+- `head(bucket, key)`. Returns dictionary with `success` boolean flag and `error`
   string.
 
 # Examples
