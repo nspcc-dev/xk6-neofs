@@ -53,6 +53,11 @@ type (
 		Error   string
 	}
 
+	HeadResponse struct {
+		Success bool
+		Error   string
+	}
+
 	VerifyHashResponse struct {
 		Success bool
 		Error   string
@@ -174,6 +179,35 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 	stats.Report(c.vu, c.metrics.objGetDuration, metrics.D(time.Since(start)))
 	stats.ReportDataReceived(c.vu, float64(objSize))
 	return GetResponse{Success: true}
+}
+
+func (c *Client) Head(containerID, objectID string) HeadResponse {
+	cliContainerID := parseContainerID(containerID)
+	cliObjectID := parseObjectID(objectID)
+
+	tok := c.tok
+	tok.ForVerb(session.VerbObjectHead)
+	tok.BindContainer(cliContainerID)
+	tok.LimitByObjects(cliObjectID)
+	err := tok.Sign(c.signer)
+	if err != nil {
+		panic(err)
+	}
+
+	stats.Report(c.vu, c.metrics.objHeadTotal, 1)
+	start := time.Now()
+
+	var prm client.PrmObjectHead
+	prm.WithinSession(tok)
+
+	_, err = c.cli.ObjectHead(c.vu.Context(), cliContainerID, cliObjectID, c.signer, prm)
+	if err != nil {
+		stats.Report(c.vu, c.metrics.objHeadFails, 1)
+		return HeadResponse{Success: false, Error: err.Error()}
+	}
+
+	stats.Report(c.vu, c.metrics.objHeadDuration, metrics.D(time.Since(start)))
+	return HeadResponse{Success: true}
 }
 
 func get(
