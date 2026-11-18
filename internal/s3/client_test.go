@@ -359,6 +359,42 @@ func TestGetCancelNoRace(t *testing.T) {
 	}
 }
 
+func TestGetSendsOneSampleContainer(t *testing.T) {
+	payload := []byte("payload")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
+		_, _ = w.Write(payload)
+	}))
+	defer srv.Close()
+
+	c, samples := newVUTestClient(t, srv)
+	resp := c.Get("bucket", "key")
+	require.True(t, resp.Success)
+	require.Empty(t, resp.Error)
+
+	require.Len(t, samples, 1)
+	container, ok := (<-samples).(metrics.ConnectedSamples)
+	require.True(t, ok)
+	require.Equal(t, container.Time, container.GetTime())
+
+	var got []string
+	for _, sample := range container.Samples {
+		require.Equal(t, container.Time, sample.Time)
+		require.Equal(t, container.Tags, sample.Tags)
+		got = append(got, sample.Metric.Name)
+		if sample.Metric.Name == metrics.DataReceivedName {
+			require.Equal(t, float64(len(payload)), sample.Value)
+		}
+	}
+	require.ElementsMatch(t, []string{
+		"aws_obj_get_total",
+		"aws_obj_get_duration",
+		"aws_obj_get_ttfb",
+		"aws_obj_get_ttfb_body",
+		metrics.DataReceivedName,
+	}, got)
+}
+
 func TestHeadReportsSuccess(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

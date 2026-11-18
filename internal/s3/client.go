@@ -69,74 +69,70 @@ func (c *Client) Put(bucket, key string, payload sobek.ArrayBuffer) PutResponse 
 	rdr := bytes.NewReader(payload.Bytes())
 	sz := rdr.Size()
 
-	stats.Report(c.vu, c.metrics.objPutTotal, 1)
+	req := stats.Start(c.vu, c.metrics.objPutTotal)
 
-	start := time.Now()
 	_, err := c.cli.PutObject(c.vu.Context(), &s3.PutObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 		Body:   rdr,
 	})
 	if err != nil {
-		stats.Report(c.vu, c.metrics.objPutFails, 1)
+		req.Fail(c.metrics.objPutFails)
 		return PutResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.ReportDataSent(c.vu, float64(sz))
-	stats.Report(c.vu, c.metrics.objPutDuration, metrics.D(time.Since(start)))
+	req.AddDataSent(sz)
+	req.Done(c.metrics.objPutDuration)
 	return PutResponse{Success: true}
 }
 
 func (c *Client) Delete(bucket, key string) DeleteResponse {
-	stats.Report(c.vu, c.metrics.objDeleteTotal, 1)
-	start := time.Now()
+	req := stats.Start(c.vu, c.metrics.objDeleteTotal)
 
 	_, err := c.cli.DeleteObject(c.vu.Context(), &s3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		stats.Report(c.vu, c.metrics.objDeleteFails, 1)
+		req.Fail(c.metrics.objDeleteFails)
 		return DeleteResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, c.metrics.objDeleteDuration, metrics.D(time.Since(start)))
+	req.Done(c.metrics.objDeleteDuration)
 	return DeleteResponse{Success: true}
 }
 
 func (c *Client) Get(bucket, key string) GetResponse {
-	stats.Report(c.vu, c.metrics.objGetTotal, 1)
-	start := time.Now()
+	req := stats.Start(c.vu, c.metrics.objGetTotal)
 
 	objSize, ttfb, ttfbBody, err := get(c.vu.Context(), c.cli, bucket, key, io.Discard)
 	if err != nil {
-		stats.Report(c.vu, c.metrics.objGetFails, 1)
+		req.Fail(c.metrics.objGetFails)
 		return GetResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, c.metrics.objGetDuration, metrics.D(time.Since(start)))
-	stats.Report(c.vu, c.metrics.objGetTTFB, metrics.D(ttfb))
+	req.Add(c.metrics.objGetTTFB, metrics.D(ttfb))
 	if ttfbBody > 0 {
-		stats.Report(c.vu, c.metrics.objGetTTFBBody, metrics.D(ttfbBody))
+		req.Add(c.metrics.objGetTTFBBody, metrics.D(ttfbBody))
 	}
-	stats.ReportDataReceived(c.vu, float64(objSize))
+	req.AddDataReceived(objSize)
+	req.Done(c.metrics.objGetDuration)
 	return GetResponse{Success: true}
 }
 
 func (c *Client) Head(bucket, key string) HeadResponse {
-	stats.Report(c.vu, c.metrics.objHeadTotal, 1)
-	start := time.Now()
+	req := stats.Start(c.vu, c.metrics.objHeadTotal)
 
 	_, err := c.cli.HeadObject(c.vu.Context(), &s3.HeadObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		stats.Report(c.vu, c.metrics.objHeadFails, 1)
+		req.Fail(c.metrics.objHeadFails)
 		return HeadResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, c.metrics.objHeadDuration, metrics.D(time.Since(start)))
+	req.Done(c.metrics.objHeadDuration)
 	return HeadResponse{Success: true}
 }
 
@@ -193,21 +189,20 @@ func (c *Client) List(bucket, prefix string, params map[string]string) ListRespo
 		input.FetchOwner = aws.Bool(fetchOwner)
 	}
 
-	stats.Report(c.vu, c.metrics.objListTotal, 1)
-	start := time.Now()
+	req := stats.Start(c.vu, c.metrics.objListTotal)
 
 	var count int
 	paginator := s3.NewListObjectsV2Paginator(c.cli, input)
 	for paginator.HasMorePages() {
 		page, err := paginator.NextPage(c.vu.Context())
 		if err != nil {
-			stats.Report(c.vu, c.metrics.objListFails, 1)
+			req.Fail(c.metrics.objListFails)
 			return ListResponse{Success: false, Error: err.Error()}
 		}
 		count += len(page.Contents)
 	}
 
-	stats.Report(c.vu, c.metrics.objListDuration, metrics.D(time.Since(start)))
+	req.Done(c.metrics.objListDuration)
 	return ListResponse{Success: true, Count: count}
 }
 
@@ -226,13 +221,13 @@ func (c *Client) VerifyHash(bucket, key, expectedHash string) VerifyHashResponse
 }
 
 func (c *Client) CreateBucket(bucket string, params map[string]string) CreateBucketResponse {
-	stats.Report(c.vu, c.metrics.createBucketTotal, 1)
+	req := stats.Start(c.vu, c.metrics.createBucketTotal)
 
 	var err error
 	var lockEnabled bool
 	if lockEnabledStr, ok := params["lock_enabled"]; ok {
 		if lockEnabled, err = strconv.ParseBool(lockEnabledStr); err != nil {
-			stats.Report(c.vu, c.metrics.createBucketFails, 1)
+			req.Fail(c.metrics.createBucketFails)
 			return CreateBucketResponse{Success: false, Error: "invalid lock_enabled params"}
 		}
 	}
@@ -244,7 +239,6 @@ func (c *Client) CreateBucket(bucket string, params map[string]string) CreateBuc
 		}
 	}
 
-	start := time.Now()
 	_, err = c.cli.CreateBucket(c.vu.Context(), &s3.CreateBucketInput{
 		Bucket:                     aws.String(bucket),
 		ACL:                        types.BucketCannedACL(params["acl"]),
@@ -252,10 +246,10 @@ func (c *Client) CreateBucket(bucket string, params map[string]string) CreateBuc
 		ObjectLockEnabledForBucket: &lockEnabled,
 	})
 	if err != nil {
-		stats.Report(c.vu, c.metrics.createBucketFails, 1)
+		req.Fail(c.metrics.createBucketFails)
 		return CreateBucketResponse{Success: false, Error: err.Error()}
 	}
 
-	stats.Report(c.vu, c.metrics.createBucketDuration, metrics.D(time.Since(start)))
+	req.Done(c.metrics.createBucketDuration)
 	return CreateBucketResponse{Success: true}
 }
