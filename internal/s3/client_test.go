@@ -14,6 +14,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/stretchr/testify/require"
+	"go.k6.io/k6/js/modulestest"
+	"go.k6.io/k6/lib"
+	"go.k6.io/k6/metrics"
 )
 
 type closingTracker struct {
@@ -54,6 +57,38 @@ func newTestClient(srv *httptest.Server) (*s3.Client, *closingTracker) {
 	return cli, tracker
 }
 
+// newVUTestClient returns a client of the endpoint whose VU sends its
+// samples to the returned channel.
+func newVUTestClient(t *testing.T, srv *httptest.Server) (*Client, chan metrics.SampleContainer) {
+	t.Helper()
+
+	rt := modulestest.NewRuntime(t)
+	samples := make(chan metrics.SampleContainer, 16)
+	// Module instances are created in the init context, before the VU runs.
+	instance := new(RootModule).NewModuleInstance(rt.VU).(*S3)
+	rt.MoveToVUContext(&lib.State{
+		Samples: samples,
+		Tags:    lib.NewVUStateTags(rt.VU.InitEnvField.Registry.RootTagSet()),
+	})
+
+	cli, _ := newTestClient(srv)
+	return &Client{vu: rt.VU, metrics: instance.metrics, cli: cli}, samples
+}
+
+// requireSamples checks that the channel holds samples of exactly the
+// given metrics.
+func requireSamples(t *testing.T, samples chan metrics.SampleContainer, want ...string) {
+	t.Helper()
+
+	var got []string
+	for len(samples) > 0 {
+		for _, sample := range (<-samples).GetSamples() {
+			got = append(got, sample.Metric.Name)
+		}
+	}
+	require.ElementsMatch(t, want, got)
+}
+
 func TestGetReturnsErrorOnTruncatedBody(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Length", "100")
@@ -90,4 +125,34 @@ func TestGetReadsWholeBody(t *testing.T) {
 	require.Equal(t, int64(len(payload)), n)
 	require.Equal(t, payload, got.Bytes())
 	require.Equal(t, int32(1), tracker.closed.Load())
+}
+
+func TestHeadReportsSuccess(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	c, samples := newVUTestClient(t, srv)
+
+	resp := c.Head("bucket", "key")
+	require.True(t, resp.Success)
+	require.Empty(t, resp.Error)
+
+	requireSamples(t, samples, "aws_obj_head_total", "aws_obj_head_duration")
+}
+
+func TestHeadReportsFailure(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+
+	c, samples := newVUTestClient(t, srv)
+
+	resp := c.Head("bucket", "key")
+	require.False(t, resp.Success)
+	require.NotEmpty(t, resp.Error)
+
+	requireSamples(t, samples, "aws_obj_head_total", "aws_obj_head_fails")
 }
