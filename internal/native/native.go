@@ -26,13 +26,13 @@ type Native struct {
 }
 
 type metricSet struct {
-	objPutTotal, objPutFails, objPutDuration          *metrics.Metric
-	objGetTotal, objGetFails, objGetDuration          *metrics.Metric
-	objHeadTotal, objHeadFails, objHeadDuration       *metrics.Metric
-	objListTotal, objListFails, objListDuration       *metrics.Metric
-	objDeleteTotal, objDeleteFails, objDeleteDuration *metrics.Metric
-	cnrPutTotal, cnrPutFails, cnrPutDuration          *metrics.Metric
-	objSearchDurationRelative                         *metrics.Metric
+	objPutTotal, objPutFails, objPutDuration             *metrics.Metric
+	objGetTotal, objGetFails, objGetDuration, objGetTTFB *metrics.Metric
+	objHeadTotal, objHeadFails, objHeadDuration          *metrics.Metric
+	objListTotal, objListFails, objListDuration          *metrics.Metric
+	objDeleteTotal, objDeleteFails, objDeleteDuration    *metrics.Metric
+	cnrPutTotal, cnrPutFails, cnrPutDuration             *metrics.Metric
+	objSearchDurationRelative                            *metrics.Metric
 }
 
 func newMetricSet(registry *metrics.Registry) *metricSet {
@@ -43,6 +43,7 @@ func newMetricSet(registry *metrics.Registry) *metricSet {
 		objGetTotal:               registry.MustNewMetric("neofs_obj_get_total", metrics.Counter),
 		objGetFails:               registry.MustNewMetric("neofs_obj_get_fails", metrics.Counter),
 		objGetDuration:            registry.MustNewMetric("neofs_obj_get_duration", metrics.Trend, metrics.Time),
+		objGetTTFB:                registry.MustNewMetric("neofs_obj_get_ttfb", metrics.Trend, metrics.Time),
 		objHeadTotal:              registry.MustNewMetric("neofs_obj_head_total", metrics.Counter),
 		objHeadFails:              registry.MustNewMetric("neofs_obj_head_fails", metrics.Counter),
 		objHeadDuration:           registry.MustNewMetric("neofs_obj_head_duration", metrics.Trend, metrics.Time),
