@@ -29,6 +29,7 @@ type metricSet struct {
 	objPutTotal, objPutFails, objPutDuration          *metrics.Metric
 	objGetTotal, objGetFails, objGetDuration          *metrics.Metric
 	objHeadTotal, objHeadFails, objHeadDuration       *metrics.Metric
+	objListTotal, objListFails, objListDuration       *metrics.Metric
 	objDeleteTotal, objDeleteFails, objDeleteDuration *metrics.Metric
 	cnrPutTotal, cnrPutFails, cnrPutDuration          *metrics.Metric
 	objSearchDurationRelative                         *metrics.Metric
@@ -45,6 +46,9 @@ func newMetricSet(registry *metrics.Registry) *metricSet {
 		objHeadTotal:              registry.MustNewMetric("neofs_obj_head_total", metrics.Counter),
 		objHeadFails:              registry.MustNewMetric("neofs_obj_head_fails", metrics.Counter),
 		objHeadDuration:           registry.MustNewMetric("neofs_obj_head_duration", metrics.Trend, metrics.Time),
+		objListTotal:              registry.MustNewMetric("neofs_obj_list_total", metrics.Counter),
+		objListFails:              registry.MustNewMetric("neofs_obj_list_fails", metrics.Counter),
+		objListDuration:           registry.MustNewMetric("neofs_obj_list_duration", metrics.Trend, metrics.Time),
 		objDeleteTotal:            registry.MustNewMetric("neofs_obj_delete_total", metrics.Counter),
 		objDeleteFails:            registry.MustNewMetric("neofs_obj_delete_fails", metrics.Counter),
 		objDeleteDuration:         registry.MustNewMetric("neofs_obj_delete_duration", metrics.Trend, metrics.Time),

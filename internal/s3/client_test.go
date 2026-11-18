@@ -2,9 +2,11 @@ package s3
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -56,6 +58,111 @@ func requireSamples(t *testing.T, samples chan metrics.SampleContainer, want ...
 		}
 	}
 	require.ElementsMatch(t, want, got)
+}
+
+type listRequest struct {
+	continuationToken string
+	prefix            string
+}
+
+const listFirstPageXML = `<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+	<Name>bucket</Name>
+	<Prefix>dir/</Prefix>
+	<KeyCount>2</KeyCount>
+	<MaxKeys>1000</MaxKeys>
+	<IsTruncated>true</IsTruncated>
+	<Contents><Key>dir/a</Key></Contents>
+	<Contents><Key>dir/b</Key></Contents>
+	<NextContinuationToken>t1</NextContinuationToken>
+</ListBucketResult>`
+
+const listSecondPageXML = `<?xml version="1.0" encoding="UTF-8"?>
+<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+	<Name>bucket</Name>
+	<Prefix>dir/</Prefix>
+	<KeyCount>1</KeyCount>
+	<MaxKeys>1000</MaxKeys>
+	<IsTruncated>false</IsTruncated>
+	<Contents><Key>dir/c</Key></Contents>
+</ListBucketResult>`
+
+func TestListFollowsAllPages(t *testing.T) {
+	var (
+		mu       sync.Mutex
+		requests []listRequest
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		mu.Lock()
+		requests = append(requests, listRequest{
+			continuationToken: query.Get("continuation-token"),
+			prefix:            query.Get("prefix"),
+		})
+		mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/xml")
+		if query.Get("continuation-token") == "" {
+			_, _ = io.WriteString(w, listFirstPageXML)
+			return
+		}
+		_, _ = io.WriteString(w, listSecondPageXML)
+	}))
+	defer srv.Close()
+
+	client, samples := newVUTestClient(t, srv.URL)
+	resp := client.List("bucket", "dir/", nil)
+
+	require.True(t, resp.Success)
+	require.Empty(t, resp.Error)
+	require.Equal(t, 3, resp.Count)
+	requireSamples(t, samples, "aws_obj_list_total", "aws_obj_list_duration")
+
+	mu.Lock()
+	gotRequests := append([]listRequest(nil), requests...)
+	mu.Unlock()
+	require.Equal(t, []listRequest{
+		{prefix: "dir/"},
+		{continuationToken: "t1", prefix: "dir/"},
+	}, gotRequests)
+}
+
+func TestListFailsWhenPageFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("continuation-token") == "" {
+			w.Header().Set("Content-Type", "application/xml")
+			_, _ = io.WriteString(w, listFirstPageXML)
+			return
+		}
+		http.Error(w, "listing failed", http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	client, samples := newVUTestClient(t, srv.URL)
+	resp := client.List("bucket", "", nil)
+
+	require.False(t, resp.Success)
+	require.NotEmpty(t, resp.Error)
+	requireSamples(t, samples, "aws_obj_list_total", "aws_obj_list_fails")
+}
+
+func TestListFetchesOwnerOnRequest(t *testing.T) {
+	var fetchOwner []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fetchOwner = append(fetchOwner, r.URL.Query().Get("fetch-owner"))
+		w.Header().Set("Content-Type", "application/xml")
+		_, _ = io.WriteString(w, listSecondPageXML)
+	}))
+	defer srv.Close()
+
+	client, _ := newVUTestClient(t, srv.URL)
+	require.True(t, client.List("bucket", "", nil).Success)
+	require.True(t, client.List("bucket", "", map[string]string{"fetch_owner": "true"}).Success)
+	require.Equal(t, []string{"", "true"}, fetchOwner)
+
+	resp := client.List("bucket", "", map[string]string{"fetch_owner": "maybe"})
+	require.False(t, resp.Success)
+	require.Contains(t, resp.Error, "fetch_owner")
 }
 
 func TestGetReturnsErrorOnTruncatedBody(t *testing.T) {
