@@ -33,6 +33,8 @@ func nativeMetricMap(ms *metricSet) map[string]*metrics.Metric {
 		"neofs_obj_get_total":            ms.objGetTotal,
 		"neofs_obj_get_fails":            ms.objGetFails,
 		"neofs_obj_get_duration":         ms.objGetDuration,
+		"neofs_obj_get_ttfb":             ms.objGetTTFB,
+		"neofs_obj_get_ttfb_body":        ms.objGetTTFBBody,
 		"neofs_obj_head_total":           ms.objHeadTotal,
 		"neofs_obj_head_fails":           ms.objHeadFails,
 		"neofs_obj_head_duration":        ms.objHeadDuration,

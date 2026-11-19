@@ -140,6 +140,7 @@ if (delete_vu_count > 0) {
 export const options = {
     scenarios,
     setupTimeout: '5s',
+    summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
 };
 
 export function setup() {
