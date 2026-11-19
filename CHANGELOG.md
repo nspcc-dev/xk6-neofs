@@ -20,6 +20,7 @@ This document outlines major changes between releases.
 - Unknown BUCKET_SELECTION and ENDPOINT_SELECTION values are rejected in S3 and gRPC scenarios (#172)
 - Scenarios show p(99) in the summary (#179)
 - The samples of one request are sent together, with one timestamp, as k6's HTTP module does (#185)
+- gRPC requests go within one session token v2 for all operations and containers instead of a v1 token signed for every request (#186)
 
 ### Updated
 
