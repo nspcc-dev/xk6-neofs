@@ -108,7 +108,7 @@ func (c *Client) Get(bucket, key string) GetResponse {
 	stats.Report(c.vu, c.metrics.objGetTotal, 1)
 	start := time.Now()
 
-	objSize, ttfb, err := get(c.vu.Context(), c.cli, bucket, key, io.Discard)
+	objSize, ttfb, ttfbBody, err := get(c.vu.Context(), c.cli, bucket, key, io.Discard)
 	if err != nil {
 		stats.Report(c.vu, c.metrics.objGetFails, 1)
 		return GetResponse{Success: false, Error: err.Error()}
@@ -116,6 +116,9 @@ func (c *Client) Get(bucket, key string) GetResponse {
 
 	stats.Report(c.vu, c.metrics.objGetDuration, metrics.D(time.Since(start)))
 	stats.Report(c.vu, c.metrics.objGetTTFB, metrics.D(ttfb))
+	if ttfbBody > 0 {
+		stats.Report(c.vu, c.metrics.objGetTTFBBody, metrics.D(ttfbBody))
+	}
 	stats.ReportDataReceived(c.vu, float64(objSize))
 	return GetResponse{Success: true}
 }
@@ -143,7 +146,7 @@ func get(
 	bucket string,
 	key string,
 	w io.Writer,
-) (int64, time.Duration, error) {
+) (int64, time.Duration, time.Duration, error) {
 	start := time.Now()
 
 	var firstByte atomic.Int64
@@ -158,16 +161,17 @@ func get(
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	defer obj.Body.Close()
 
-	n, err := io.Copy(w, obj.Body)
+	body := stats.FirstByte{W: w}
+	n, err := io.Copy(&body, obj.Body)
 	if err != nil {
-		return n, 0, fmt.Errorf("read object body: %w", err)
+		return n, 0, 0, fmt.Errorf("read object body: %w", err)
 	}
 
-	return n, time.Duration(firstByte.Load()), nil
+	return n, time.Duration(firstByte.Load()), body.Since(start), nil
 }
 
 // List lists all objects in the bucket that match the prefix. It follows all
@@ -209,7 +213,7 @@ func (c *Client) List(bucket, prefix string, params map[string]string) ListRespo
 
 func (c *Client) VerifyHash(bucket, key, expectedHash string) VerifyHashResponse {
 	hasher := sha256.New()
-	_, _, err := get(c.vu.Context(), c.cli, bucket, key, hasher)
+	_, _, _, err := get(c.vu.Context(), c.cli, bucket, key, hasher)
 	if err != nil {
 		return VerifyHashResponse{Success: false, Error: err.Error()}
 	}

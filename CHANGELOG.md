@@ -8,6 +8,7 @@ This document outlines major changes between releases.
 - STAT (HEAD) operations and STATERS in S3 and gRPC scenarios (#178)
 - LIST operations and LISTERS in S3 and gRPC scenarios (#178)
 - Time to first byte of GET responses as neofs_obj_get_ttfb and aws_obj_get_ttfb (#179)
+- Time to first payload byte of GET responses as neofs_obj_get_ttfb_body and aws_obj_get_ttfb_body (#179)
 
 ### Fixed
 - Random bucket selection in S3 and gRPC scenarios (#172)

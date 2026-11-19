@@ -204,7 +204,7 @@ func TestGetReturnsErrorOnTruncatedBody(t *testing.T) {
 	defer srv.Close()
 
 	cli, tracker := newTestClient(srv)
-	got, _, err := get(context.Background(), cli, "bucket", "key", io.Discard)
+	got, _, _, err := get(context.Background(), cli, "bucket", "key", io.Discard)
 
 	require.Error(t, err)
 	require.ErrorContains(t, err, "read object body")
@@ -226,7 +226,7 @@ func TestGetReadsWholeBody(t *testing.T) {
 
 	cli, tracker := newTestClient(srv)
 	var got bytes.Buffer
-	n, _, err := get(context.Background(), cli, "bucket", "key", &got)
+	n, _, _, err := get(context.Background(), cli, "bucket", "key", &got)
 
 	require.NoError(t, err)
 	require.Equal(t, int64(len(payload)), n)
@@ -252,13 +252,28 @@ func TestGetReturnsTimeToFirstByte(t *testing.T) {
 
 	cli, _ := newTestClient(srv)
 	start := time.Now()
-	_, ttfb, err := get(context.Background(), cli, "bucket", "key", io.Discard)
+	_, ttfb, ttfbBody, err := get(context.Background(), cli, "bucket", "key", io.Discard)
 	total := time.Since(start)
 
 	require.NoError(t, err)
+	// The response starts with its headers, the payload comes later.
 	require.GreaterOrEqual(t, ttfb, headerDelay)
-	require.Less(t, ttfb, total)
-	require.GreaterOrEqual(t, total, headerDelay+bodyDelay)
+	require.Less(t, ttfb, headerDelay+bodyDelay)
+	require.GreaterOrEqual(t, ttfbBody, headerDelay+bodyDelay)
+	require.LessOrEqual(t, ttfbBody, total)
+}
+
+func TestGetOfEmptyObjectHasNoBodyTime(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", "0")
+	}))
+	defer srv.Close()
+
+	cli, _ := newTestClient(srv)
+	_, ttfb, ttfbBody, err := get(context.Background(), cli, "bucket", "key", io.Discard)
+	require.NoError(t, err)
+	require.Positive(t, ttfb)
+	require.Zero(t, ttfbBody)
 }
 
 func TestHeadReportsSuccess(t *testing.T) {
