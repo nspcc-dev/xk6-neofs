@@ -85,7 +85,8 @@ const neofs_cli = native.connect("s01.neofs.devenv:8080", "", 0, 0)
 - `get(container_id, object_id)`. Returns dictionary with `success` boolean
   flag, and `error` string. A successful get also reports `neofs_obj_get_ttfb`:
   the time from sending the request to the first response byte (the object
-  header message).
+  header message), and `neofs_obj_get_ttfb_body`: the time to the first byte of
+  the payload, which follows the header.
 - `head(container_id, object_id)`. Returns dictionary with `success` boolean
   flag, and `error` string.
 - `list(container_id, prefix)`. Lists objects in the container under the
@@ -126,7 +127,8 @@ const s3_cli = s3.connect("http://s3.neofs.devenv:8080", {'no_verify_ssl': 'true
 - `get(bucket, key)`. Returns dictionary with `success` boolean flag and `error`
   string. A successful get also reports `aws_obj_get_ttfb`: the time from
   sending the request to the first byte of the HTTP response, as in k6's
-  `http_req_waiting`.
+  `http_req_waiting`, and `aws_obj_get_ttfb_body`: the time to the first byte
+  of the response body.
 - `head(bucket, key)`. Returns dictionary with `success` boolean flag and `error`
   string.
 - `list(bucket, prefix[, params])`. Lists objects in the bucket under the prefix,

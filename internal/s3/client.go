@@ -108,7 +108,7 @@ func (c *Client) Get(bucket, key string) GetResponse {
 	start := time.Now()
 
 	var objSize = 0
-	ttfb, err := get(c.vu.Context(), c.cli, bucket, key, func(chunk []byte) {
+	ttfb, ttfbBody, err := get(c.vu.Context(), c.cli, bucket, key, func(chunk []byte) {
 		objSize += len(chunk)
 	})
 	if err != nil {
@@ -118,6 +118,9 @@ func (c *Client) Get(bucket, key string) GetResponse {
 
 	stats.Report(c.vu, c.metrics.objGetDuration, metrics.D(time.Since(start)))
 	stats.Report(c.vu, c.metrics.objGetTTFB, metrics.D(ttfb))
+	if ttfbBody > 0 {
+		stats.Report(c.vu, c.metrics.objGetTTFBBody, metrics.D(ttfbBody))
+	}
 	stats.ReportDataReceived(c.vu, float64(objSize))
 	return GetResponse{Success: true}
 }
@@ -153,11 +156,10 @@ func get(
 	bucket string,
 	key string,
 	onDataChunk func(chunk []byte),
-) (time.Duration, error) {
+) (ttfb, ttfbBody time.Duration, err error) {
 	start := time.Now()
 
 	// The client does not retry (see Connect), so there is one response.
-	var ttfb time.Duration
 	ctx = httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
 		GotFirstResponseByte: func() { ttfb = time.Since(start) },
 	})
@@ -167,15 +169,16 @@ func get(
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	defer obj.Body.Close()
 
-	if _, err := io.CopyBuffer(chunkWriter(onDataChunk), obj.Body, make([]byte, 32*1024)); err != nil {
-		return 0, fmt.Errorf("read object body: %w", err)
+	body := stats.FirstByte{W: chunkWriter(onDataChunk)}
+	if _, err := io.CopyBuffer(&body, obj.Body, make([]byte, 32*1024)); err != nil {
+		return 0, 0, fmt.Errorf("read object body: %w", err)
 	}
 
-	return ttfb, nil
+	return ttfb, body.Since(start), nil
 }
 
 // List lists all objects in the bucket that match the prefix. It follows all
@@ -217,7 +220,7 @@ func (c *Client) List(bucket, prefix string, params map[string]string) ListRespo
 
 func (c *Client) VerifyHash(bucket, key, expectedHash string) VerifyHashResponse {
 	hasher := sha256.New()
-	_, err := get(c.vu.Context(), c.cli, bucket, key, func(data []byte) {
+	_, _, err := get(c.vu.Context(), c.cli, bucket, key, func(data []byte) {
 		hasher.Write(data)
 	})
 	if err != nil {
