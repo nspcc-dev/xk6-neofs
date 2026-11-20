@@ -11,7 +11,18 @@ import (
 	"go.k6.io/k6/metrics"
 )
 
-func TestReportDataSentPushesSample(t *testing.T) {
+type testRequest struct {
+	r        *Request
+	samples  chan metrics.SampleContainer
+	total    *metrics.Metric
+	duration *metrics.Metric
+	ttfb     *metrics.Metric
+	fails    *metrics.Metric
+}
+
+func newTestRequest(t *testing.T) testRequest {
+	t.Helper()
+
 	rt := modulestest.NewRuntime(t)
 	registry := metrics.NewRegistry()
 	builtinMetrics := metrics.RegisterBuiltinMetrics(registry)
@@ -21,16 +32,66 @@ func TestReportDataSentPushesSample(t *testing.T) {
 		Tags:           lib.NewVUStateTags(registry.RootTagSet()),
 		BuiltinMetrics: builtinMetrics,
 	}
+	state.Tags.Modify(func(tagsAndMeta *metrics.TagsAndMeta) {
+		tagsAndMeta.SetMetadata("request", "test")
+	})
 	rt.MoveToVUContext(state)
 
-	ReportDataSent(rt.VU, 123)
+	total := registry.MustNewMetric("test_total", metrics.Counter)
+	return testRequest{
+		r:        Start(rt.VU, total),
+		samples:  samples,
+		total:    total,
+		duration: registry.MustNewMetric("test_duration", metrics.Trend, metrics.Time),
+		ttfb:     registry.MustNewMetric("test_ttfb", metrics.Trend, metrics.Time),
+		fails:    registry.MustNewMetric("test_fails", metrics.Counter),
+	}
+}
 
-	require.Len(t, samples, 1)
-	got := (<-samples).GetSamples()
-	require.Len(t, got, 1)
-	require.Same(t, builtinMetrics.DataSent, got[0].Metric)
-	require.Equal(t, metrics.DataSentName, got[0].Metric.Name)
-	require.Equal(t, float64(123), got[0].Value)
+func TestRequestDonePushesOneConnectedContainer(t *testing.T) {
+	tr := newTestRequest(t)
+	tr.r.Add(tr.ttfb, metrics.D(10*time.Millisecond))
+	tr.r.AddDataReceived(42)
+	tr.r.Done(tr.duration)
+
+	require.Len(t, tr.samples, 1)
+	container, ok := (<-tr.samples).(metrics.ConnectedSamples)
+	require.True(t, ok)
+	require.False(t, container.Time.IsZero())
+	require.Len(t, container.Samples, 4)
+
+	got := make(map[string]float64, len(container.Samples))
+	for _, sample := range container.Samples {
+		require.Equal(t, container.Time, sample.Time)
+		require.Equal(t, container.Tags, sample.Tags)
+		require.Equal(t, map[string]string{"request": "test"}, sample.Metadata)
+		got[sample.Metric.Name] = sample.Value
+	}
+	require.Equal(t, float64(1), got[tr.total.Name])
+	require.Equal(t, metrics.D(10*time.Millisecond), got[tr.ttfb.Name])
+	require.Equal(t, float64(42), got[metrics.DataReceivedName])
+	require.Contains(t, got, tr.duration.Name)
+	require.GreaterOrEqual(t, got[tr.duration.Name], float64(0))
+}
+
+func TestRequestFailPushesOneConnectedContainer(t *testing.T) {
+	tr := newTestRequest(t)
+	tr.r.Fail(tr.fails)
+
+	require.Len(t, tr.samples, 1)
+	container, ok := (<-tr.samples).(metrics.ConnectedSamples)
+	require.True(t, ok)
+	require.Len(t, container.Samples, 2)
+
+	got := make(map[string]float64, len(container.Samples))
+	for _, sample := range container.Samples {
+		require.Equal(t, container.Time, sample.Time)
+		require.Equal(t, container.Tags, sample.Tags)
+		require.Equal(t, map[string]string{"request": "test"}, sample.Metadata)
+		got[sample.Metric.Name] = sample.Value
+	}
+	require.Equal(t, float64(1), got[tr.total.Name])
+	require.Equal(t, float64(1), got[tr.fails.Name])
 }
 
 func TestFirstByte(t *testing.T) {

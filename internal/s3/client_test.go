@@ -37,11 +37,13 @@ func newVUTestClient(t *testing.T, endpoint string) (*Client, chan metrics.Sampl
 
 	rt := modulestest.NewRuntime(t)
 	samples := make(chan metrics.SampleContainer, 16)
+	registry := rt.VU.InitEnvField.Registry
 	// Module instances are created in the init context, before the VU runs.
 	instance := new(RootModule).NewModuleInstance(rt.VU).(*S3)
 	rt.MoveToVUContext(&lib.State{
-		Samples: samples,
-		Tags:    lib.NewVUStateTags(rt.VU.InitEnvField.Registry.RootTagSet()),
+		Samples:        samples,
+		Tags:           lib.NewVUStateTags(registry.RootTagSet()),
+		BuiltinMetrics: metrics.RegisterBuiltinMetrics(registry),
 	})
 
 	return &Client{vu: rt.VU, metrics: instance.metrics, cli: newTestClient(endpoint)}, samples
@@ -242,6 +244,42 @@ func TestGetOfEmptyObjectHasNoBodyTime(t *testing.T) {
 	require.NoError(t, err)
 	require.Positive(t, ttfb)
 	require.Zero(t, ttfbBody)
+}
+
+func TestGetSendsOneSampleContainer(t *testing.T) {
+	payload := []byte("payload")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", strconv.Itoa(len(payload)))
+		_, _ = w.Write(payload)
+	}))
+	defer srv.Close()
+
+	c, samples := newVUTestClient(t, srv.URL)
+	resp := c.Get("bucket", "key")
+	require.True(t, resp.Success)
+	require.Empty(t, resp.Error)
+
+	require.Len(t, samples, 1)
+	container, ok := (<-samples).(metrics.ConnectedSamples)
+	require.True(t, ok)
+	require.False(t, container.Time.IsZero())
+
+	var got []string
+	for _, sample := range container.Samples {
+		require.Equal(t, container.Time, sample.Time)
+		require.Equal(t, container.Tags, sample.Tags)
+		got = append(got, sample.Metric.Name)
+		if sample.Metric.Name == metrics.DataReceivedName {
+			require.Equal(t, float64(len(payload)), sample.Value)
+		}
+	}
+	require.ElementsMatch(t, []string{
+		"aws_obj_get_total",
+		"aws_obj_get_duration",
+		"aws_obj_get_ttfb",
+		"aws_obj_get_ttfb_body",
+		metrics.DataReceivedName,
+	}, got)
 }
 
 func TestHeadReportsSuccess(t *testing.T) {
