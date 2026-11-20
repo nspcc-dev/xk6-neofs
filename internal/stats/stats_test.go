@@ -44,7 +44,7 @@ func newTestRequest(t *testing.T) testRequest {
 		total:    total,
 		duration: registry.MustNewMetric("test_duration", metrics.Trend, metrics.Time),
 		ttfb:     registry.MustNewMetric("test_ttfb", metrics.Trend, metrics.Time),
-		fails:    registry.MustNewMetric("test_fails", metrics.Rate),
+		fails:    registry.MustNewMetric("test_fails", metrics.Counter),
 	}
 }
 
