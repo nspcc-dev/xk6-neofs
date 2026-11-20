@@ -57,7 +57,7 @@ func TestRequestDonePushesOneConnectedContainer(t *testing.T) {
 	require.Len(t, tr.samples, 1)
 	container, ok := (<-tr.samples).(metrics.ConnectedSamples)
 	require.True(t, ok)
-	require.Equal(t, container.Time, container.GetTime())
+	require.False(t, container.Time.IsZero())
 	require.Len(t, container.Samples, 4)
 
 	got := make(map[string]float64, len(container.Samples))
