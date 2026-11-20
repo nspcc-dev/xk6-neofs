@@ -262,7 +262,7 @@ func TestGetSendsOneSampleContainer(t *testing.T) {
 	require.Len(t, samples, 1)
 	container, ok := (<-samples).(metrics.ConnectedSamples)
 	require.True(t, ok)
-	require.Equal(t, container.Time, container.GetTime())
+	require.False(t, container.Time.IsZero())
 
 	var got []string
 	for _, sample := range container.Samples {
