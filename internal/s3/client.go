@@ -41,6 +41,11 @@ type (
 		Error   string
 	}
 
+	HeadResponse struct {
+		Success bool
+		Error   string
+	}
+
 	CreateBucketResponse struct {
 		Success bool
 		Error   string
@@ -104,6 +109,23 @@ func (c *Client) Get(bucket, key string) GetResponse {
 	stats.Report(c.vu, c.metrics.objGetDuration, metrics.D(time.Since(start)))
 	stats.ReportDataReceived(c.vu, float64(objSize))
 	return GetResponse{Success: true}
+}
+
+func (c *Client) Head(bucket, key string) HeadResponse {
+	stats.Report(c.vu, c.metrics.objHeadTotal, 1)
+	start := time.Now()
+
+	_, err := c.cli.HeadObject(c.vu.Context(), &s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		stats.Report(c.vu, c.metrics.objHeadFails, 1)
+		return HeadResponse{Success: false, Error: err.Error()}
+	}
+
+	stats.Report(c.vu, c.metrics.objHeadDuration, metrics.D(time.Since(start)))
+	return HeadResponse{Success: true}
 }
 
 func get(

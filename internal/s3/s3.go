@@ -28,6 +28,7 @@ type S3 struct {
 type metricSet struct {
 	objPutTotal, objPutFails, objPutDuration                   *metrics.Metric
 	objGetTotal, objGetFails, objGetDuration                   *metrics.Metric
+	objHeadTotal, objHeadFails, objHeadDuration                *metrics.Metric
 	objDeleteTotal, objDeleteFails, objDeleteDuration          *metrics.Metric
 	createBucketTotal, createBucketFails, createBucketDuration *metrics.Metric
 }
@@ -40,6 +41,9 @@ func newMetricSet(registry *metrics.Registry) *metricSet {
 		objGetTotal:          registry.MustNewMetric("aws_obj_get_total", metrics.Counter),
 		objGetFails:          registry.MustNewMetric("aws_obj_get_fails", metrics.Counter),
 		objGetDuration:       registry.MustNewMetric("aws_obj_get_duration", metrics.Trend, metrics.Time),
+		objHeadTotal:         registry.MustNewMetric("aws_obj_head_total", metrics.Counter),
+		objHeadFails:         registry.MustNewMetric("aws_obj_head_fails", metrics.Counter),
+		objHeadDuration:      registry.MustNewMetric("aws_obj_head_duration", metrics.Trend, metrics.Time),
 		objDeleteTotal:       registry.MustNewMetric("aws_obj_delete_total", metrics.Counter),
 		objDeleteFails:       registry.MustNewMetric("aws_obj_delete_fails", metrics.Counter),
 		objDeleteDuration:    registry.MustNewMetric("aws_obj_delete_duration", metrics.Trend, metrics.Time),
