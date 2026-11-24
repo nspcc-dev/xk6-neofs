@@ -69,8 +69,9 @@ func newVUTestClient(t *testing.T, srv *httptest.Server) (*Client, chan metrics.
 	// Module instances are created in the init context, before the VU runs.
 	instance := new(RootModule).NewModuleInstance(rt.VU).(*S3)
 	rt.MoveToVUContext(&lib.State{
-		Samples: samples,
-		Tags:    lib.NewVUStateTags(rt.VU.InitEnvField.Registry.RootTagSet()),
+		Samples:        samples,
+		Tags:           lib.NewVUStateTags(rt.VU.InitEnvField.Registry.RootTagSet()),
+		BuiltinMetrics: metrics.RegisterBuiltinMetrics(rt.VU.InitEnvField.Registry),
 	})
 
 	cli, _ := newTestClient(srv)
@@ -274,6 +275,88 @@ func TestGetOfEmptyObjectHasNoBodyTime(t *testing.T) {
 	require.NoError(t, err)
 	require.Positive(t, ttfb)
 	require.Zero(t, ttfbBody)
+}
+
+func TestGetReportsMetrics(t *testing.T) {
+	t.Run("non-empty", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			time.Sleep(time.Millisecond)
+			w.Header().Set("Content-Length", "7")
+			_, _ = w.Write([]byte("payload"))
+		}))
+		defer srv.Close()
+
+		c, samples := newVUTestClient(t, srv)
+		resp := c.Get("bucket", "key")
+		require.True(t, resp.Success)
+		require.Empty(t, resp.Error)
+		requireSamples(t, samples,
+			"aws_obj_get_total",
+			"aws_obj_get_duration",
+			"aws_obj_get_ttfb",
+			"aws_obj_get_ttfb_body",
+			metrics.DataReceivedName,
+		)
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Length", "0")
+		}))
+		defer srv.Close()
+
+		c, samples := newVUTestClient(t, srv)
+		resp := c.Get("bucket", "key")
+		require.True(t, resp.Success)
+		require.Empty(t, resp.Error)
+		requireSamples(t, samples,
+			"aws_obj_get_total",
+			"aws_obj_get_duration",
+			"aws_obj_get_ttfb",
+			metrics.DataReceivedName,
+		)
+	})
+
+	t.Run("error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer srv.Close()
+
+		c, samples := newVUTestClient(t, srv)
+		resp := c.Get("bucket", "key")
+		require.False(t, resp.Success)
+		require.NotEmpty(t, resp.Error)
+		requireSamples(t, samples, "aws_obj_get_total", "aws_obj_get_fails")
+	})
+}
+
+func TestGetCancelNoRace(t *testing.T) {
+	var (
+		mu     sync.Mutex
+		cancel context.CancelFunc
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", "7")
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		mu.Lock()
+		fn := cancel
+		mu.Unlock()
+		fn()
+	}))
+	defer srv.Close()
+
+	cli, _ := newTestClient(srv)
+	for range 50 {
+		ctx, c := context.WithCancel(context.Background())
+		mu.Lock()
+		cancel = c
+		mu.Unlock()
+		_, _, _, err := get(ctx, cli, "bucket", "key", io.Discard)
+		c()
+		require.Error(t, err)
+	}
 }
 
 func TestHeadReportsSuccess(t *testing.T) {
