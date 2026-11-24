@@ -1,15 +1,16 @@
 package native
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"math"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/nspcc-dev/neo-go/pkg/crypto/keys"
 	"github.com/nspcc-dev/neofs-sdk-go/client"
+	cid "github.com/nspcc-dev/neofs-sdk-go/container/id"
 	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
-	"github.com/nspcc-dev/neofs-sdk-go/session"
+	"github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"go.k6.io/k6/js/modules"
 	"go.k6.io/k6/metrics"
@@ -135,23 +136,16 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 		return nil, fmt.Errorf("dial endpoint: %w", err)
 	}
 
-	var id uuid.UUID
-	err = id.UnmarshalBinary(sessionResp.ID())
-	if err != nil {
-		return nil, fmt.Errorf("session token: %w", err)
-	}
-
 	var key neofsecdsa.PublicKey
 	err = key.Decode(sessionResp.PublicKey())
 	if err != nil {
 		return nil, fmt.Errorf("invalid public session key: %w", err)
 	}
 
-	var tok session.Object
-
-	tok.SetID(id)
-	tok.SetAuthKey(&key)
-	tok.SetExp(exp)
+	tok, err := newSessionToken(signer, key, time.Now())
+	if err != nil {
+		return nil, fmt.Errorf("session token: %w", err)
+	}
 
 	return &Client{
 		vu:      n.vu,
@@ -161,4 +155,58 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 		tok:     tok,
 		cli:     cli,
 	}, nil
+}
+
+// sessionVerbs are the operations a [Client] does within its session, in the
+// order a session context has to list them.
+var sessionVerbs = []session.Verb{
+	session.VerbObjectPut,
+	session.VerbObjectGet,
+	session.VerbObjectHead,
+	session.VerbObjectDelete,
+}
+
+const (
+	// sessionLifetime is how long the session token is valid: longer than
+	// any test runs.
+	sessionLifetime = 10 * 365 * 24 * time.Hour
+	// sessionClockSkew is how far the node's clock may be behind ours for
+	// the token to be valid at once.
+	sessionClockSkew = 30 * time.Second
+)
+
+// newSessionToken issues the one session token a [Client] sends with all its
+// requests: it covers every operation of sessionVerbs in any container. Its
+// subject is the session key the node created, which lets the node sign the
+// objects the client puts.
+//
+// The token is the same for every request, so it is signed once here, not
+// once per request, and a node, which remembers the tokens it has checked,
+// verifies its signature once too.
+func newSessionToken(signer user.Signer, sessionKey neofsecdsa.PublicKey, now time.Time) (session.Token, error) {
+	var tok session.Token
+	tok.SetVersion(session.TokenCurrentVersion)
+	tok.SetIat(now.Add(-sessionClockSkew))
+	tok.SetNbf(now.Add(-sessionClockSkew))
+	tok.SetExp(now.Add(sessionLifetime))
+	tok.SetFinal(true)
+
+	if err := tok.AddSubject(session.NewTargetUser(user.NewFromECDSAPublicKey(ecdsa.PublicKey(sessionKey)))); err != nil {
+		return tok, fmt.Errorf("add session key as subject: %w", err)
+	}
+
+	// The zero container ID is a wildcard: any container.
+	anyContainer, err := session.NewContext(cid.ID{}, sessionVerbs)
+	if err != nil {
+		return tok, fmt.Errorf("create context: %w", err)
+	}
+	if err = tok.SetContexts([]session.Context{anyContainer}); err != nil {
+		return tok, fmt.Errorf("set context: %w", err)
+	}
+
+	if err = tok.Sign(signer); err != nil {
+		return tok, fmt.Errorf("sign: %w", err)
+	}
+
+	return tok, nil
 }

@@ -19,7 +19,7 @@ import (
 	"github.com/nspcc-dev/neofs-sdk-go/netmap"
 	"github.com/nspcc-dev/neofs-sdk-go/object"
 	oid "github.com/nspcc-dev/neofs-sdk-go/object/id"
-	"github.com/nspcc-dev/neofs-sdk-go/session"
+	"github.com/nspcc-dev/neofs-sdk-go/session/v2"
 	"github.com/nspcc-dev/neofs-sdk-go/user"
 	"github.com/nspcc-dev/neofs-sdk-go/version"
 	"github.com/nspcc-dev/xk6-neofs/internal/stats"
@@ -33,7 +33,7 @@ type (
 		metrics *metricSet
 		signer  user.Signer
 		owner   user.ID
-		tok     session.Object
+		tok     session.Token
 		cli     *client.Client
 	}
 
@@ -89,14 +89,6 @@ type (
 func (c *Client) Put(containerID string, headers map[string]string, payload sobek.ArrayBuffer) PutResponse {
 	cliContainerID := parseContainerID(containerID)
 
-	tok := c.tok
-	tok.ForVerb(session.VerbObjectPut)
-	tok.BindContainer(cliContainerID)
-	err := tok.Sign(c.signer)
-	if err != nil {
-		panic(err)
-	}
-
 	attrs := make([]object.Attribute, len(headers))
 	ind := 0
 	for k, v := range headers {
@@ -110,7 +102,7 @@ func (c *Client) Put(containerID string, headers map[string]string, payload sobe
 	o.SetOwner(c.owner)
 	o.SetAttributes(attrs...)
 
-	resp, err := put(c.vu, c.metrics, c.cli, &tok, c.signer, &o, payload.Bytes())
+	resp, err := put(c.vu, c.metrics, c.cli, &c.tok, c.signer, &o, payload.Bytes())
 	if err != nil {
 		return PutResponse{Success: false, Error: err.Error()}
 	}
@@ -122,21 +114,12 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 	cliContainerID := parseContainerID(containerID)
 	cliObjectID := parseObjectID(objectID)
 
-	tok := c.tok
-	tok.ForVerb(session.VerbObjectDelete)
-	tok.BindContainer(cliContainerID)
-	tok.LimitByObjects(cliObjectID)
-	err := tok.Sign(c.signer)
-	if err != nil {
-		panic(err)
-	}
-
 	req := stats.Start(c.vu, c.metrics.objDeleteTotal)
 
 	var prm client.PrmObjectDelete
-	prm.WithinSession(tok)
+	prm.WithinSessionV2(c.tok)
 
-	_, err = c.cli.ObjectDelete(c.vu.Context(), cliContainerID, cliObjectID, c.signer, prm)
+	_, err := c.cli.ObjectDelete(c.vu.Context(), cliContainerID, cliObjectID, c.signer, prm)
 	if err != nil {
 		req.Fail(c.metrics.objDeleteFails)
 		return DeleteResponse{Success: false, Error: err.Error()}
@@ -158,19 +141,10 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 	cliContainerID := parseContainerID(containerID)
 	cliObjectID := parseObjectID(objectID)
 
-	tok := c.tok
-	tok.ForVerb(session.VerbObjectGet)
-	tok.BindContainer(cliContainerID)
-	tok.LimitByObjects(cliObjectID)
-	err := tok.Sign(c.signer)
-	if err != nil {
-		panic(err)
-	}
-
 	req := stats.Start(c.vu, c.metrics.objGetTotal)
 
 	var prm client.PrmObjectGet
-	prm.WithinSession(tok)
+	prm.WithinSessionV2(c.tok)
 	prm.SkipChecksumVerification()
 
 	var objSize sizeCounter
@@ -193,22 +167,13 @@ func (c *Client) Head(containerID, objectID string) HeadResponse {
 	cliContainerID := parseContainerID(containerID)
 	cliObjectID := parseObjectID(objectID)
 
-	tok := c.tok
-	tok.ForVerb(session.VerbObjectHead)
-	tok.BindContainer(cliContainerID)
-	tok.LimitByObjects(cliObjectID)
-	err := tok.Sign(c.signer)
-	if err != nil {
-		panic(err)
-	}
-
 	req := stats.Start(c.vu, c.metrics.objHeadTotal)
 
 	var prm client.PrmObjectHead
-	prm.WithinSession(tok)
+	prm.WithinSessionV2(c.tok)
 	prm.SkipChecksumVerification()
 
-	_, err = c.cli.ObjectHead(c.vu.Context(), cliContainerID, cliObjectID, c.signer, prm)
+	_, err := c.cli.ObjectHead(c.vu.Context(), cliContainerID, cliObjectID, c.signer, prm)
 	if err != nil {
 		req.Fail(c.metrics.objHeadFails)
 		return HeadResponse{Success: false, Error: err.Error()}
@@ -295,20 +260,11 @@ func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHa
 	cliContainerID := parseContainerID(containerID)
 	cliObjectID := parseObjectID(objectID)
 
-	tok := c.tok
-	tok.ForVerb(session.VerbObjectGet)
-	tok.BindContainer(cliContainerID)
-	tok.LimitByObjects(cliObjectID)
-	err := tok.Sign(c.signer)
-	if err != nil {
-		panic(err)
-	}
-
 	var prm client.PrmObjectGet
-	prm.WithinSession(tok)
+	prm.WithinSessionV2(c.tok)
 
 	hasher := sha256.New()
-	_, _, err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, hasher)
+	_, _, err := get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, hasher)
 
 	if err != nil {
 		return VerifyHashResponse{Success: false, Error: err.Error()}
@@ -521,7 +477,7 @@ func (p PreparedObject) Put(headers map[string]string) PutResponse {
 	return PutResponse{Success: true, ObjectID: id.String()}
 }
 
-func put(vu modules.VU, ms *metricSet, cli *client.Client, tok *session.Object, signer user.Signer,
+func put(vu modules.VU, ms *metricSet, cli *client.Client, tok *session.Token, signer user.Signer,
 	hdr *object.Object, payload []byte) (*client.ResObjectPut, error) {
 	rdr := bytes.NewReader(payload)
 	sz := rdr.Size()
@@ -531,7 +487,7 @@ func put(vu modules.VU, ms *metricSet, cli *client.Client, tok *session.Object, 
 
 	var prm client.PrmObjectPutInit
 	if tok != nil {
-		prm.WithinSession(*tok)
+		prm.WithinSessionV2(*tok)
 	}
 
 	objectWriter, err := cli.ObjectPutInit(vu.Context(), *hdr, signer, prm)
