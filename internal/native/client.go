@@ -176,13 +176,17 @@ func (c *Client) Get(containerID, objectID string) GetResponse {
 	prm.SkipChecksumVerification()
 
 	var objSize sizeCounter
-	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, &objSize)
+	ttfb, ttfbBody, err := get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, &objSize)
 	if err != nil {
 		stats.Report(c.vu, c.metrics.objGetFails, 1)
 		return GetResponse{Success: false, Error: err.Error()}
 	}
 
 	stats.Report(c.vu, c.metrics.objGetDuration, metrics.D(time.Since(start)))
+	stats.Report(c.vu, c.metrics.objGetTTFB, metrics.D(ttfb))
+	if ttfbBody > 0 {
+		stats.Report(c.vu, c.metrics.objGetTTFBBody, metrics.D(ttfbBody))
+	}
 	stats.ReportDataReceived(c.vu, float64(objSize))
 	return GetResponse{Success: true}
 }
@@ -225,23 +229,29 @@ func get(
 	prm client.PrmObjectGet,
 	signer user.Signer,
 	w io.Writer,
-) error {
+) (ttfb, ttfbBody time.Duration, err error) {
+	start := time.Now()
+
+	// The first response message carries the object's header; payload
+	// follows in later ones.
 	_, objectReader, err := cli.ObjectGetInit(ctx, containerID, objectID, signer, prm)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
+	ttfb = time.Since(start)
 
-	_, err = objectReader.WriteTo(w)
+	body := stats.FirstByte{W: w}
+	_, err = objectReader.WriteTo(&body)
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
 	err = objectReader.Close()
 	if err != nil {
-		return err
+		return 0, 0, err
 	}
 
-	return nil
+	return ttfb, body.Since(start), nil
 }
 
 // List lists the objects in the container: those whose FilePath attribute
@@ -302,7 +312,7 @@ func (c *Client) VerifyHash(containerID, objectID, expectedHash string) VerifyHa
 	prm.WithinSession(tok)
 
 	hasher := sha256.New()
-	err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, hasher)
+	_, _, err = get(c.vu.Context(), c.cli, cliContainerID, cliObjectID, prm, c.signer, hasher)
 
 	if err != nil {
 		return VerifyHashResponse{Success: false, Error: err.Error()}
