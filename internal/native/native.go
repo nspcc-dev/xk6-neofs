@@ -21,19 +21,40 @@ type RootModule struct{}
 
 // Native represents an instance of the module for every VU.
 type Native struct {
-	vu modules.VU
+	vu      modules.VU
+	metrics *metricSet
+}
+
+type metricSet struct {
+	objPutTotal, objPutFails, objPutDuration          *metrics.Metric
+	objGetTotal, objGetFails, objGetDuration          *metrics.Metric
+	objDeleteTotal, objDeleteFails, objDeleteDuration *metrics.Metric
+	cnrPutTotal, cnrPutFails, cnrPutDuration          *metrics.Metric
+	objSearchDurationRelative                         *metrics.Metric
+}
+
+func newMetricSet(registry *metrics.Registry) *metricSet {
+	return &metricSet{
+		objPutTotal:               registry.MustNewMetric("neofs_obj_put_total", metrics.Counter),
+		objPutFails:               registry.MustNewMetric("neofs_obj_put_fails", metrics.Counter),
+		objPutDuration:            registry.MustNewMetric("neofs_obj_put_duration", metrics.Trend, metrics.Time),
+		objGetTotal:               registry.MustNewMetric("neofs_obj_get_total", metrics.Counter),
+		objGetFails:               registry.MustNewMetric("neofs_obj_get_fails", metrics.Counter),
+		objGetDuration:            registry.MustNewMetric("neofs_obj_get_duration", metrics.Trend, metrics.Time),
+		objDeleteTotal:            registry.MustNewMetric("neofs_obj_delete_total", metrics.Counter),
+		objDeleteFails:            registry.MustNewMetric("neofs_obj_delete_fails", metrics.Counter),
+		objDeleteDuration:         registry.MustNewMetric("neofs_obj_delete_duration", metrics.Trend, metrics.Time),
+		cnrPutTotal:               registry.MustNewMetric("neofs_cnr_put_total", metrics.Counter),
+		cnrPutFails:               registry.MustNewMetric("neofs_cnr_put_fails", metrics.Counter),
+		cnrPutDuration:            registry.MustNewMetric("neofs_cnr_put_duration", metrics.Trend, metrics.Time),
+		objSearchDurationRelative: registry.MustNewMetric("neofs_search_duration_relative", metrics.Trend, metrics.Time),
+	}
 }
 
 // Ensure the interfaces are implemented correctly.
 var (
 	_ modules.Instance = &Native{}
 	_ modules.Module   = &RootModule{}
-
-	objPutTotal, objPutFails, objPutDuration          *metrics.Metric
-	objGetTotal, objGetFails, objGetDuration          *metrics.Metric
-	objDeleteTotal, objDeleteFails, objDeleteDuration *metrics.Metric
-	cnrPutTotal, cnrPutFails, cnrPutDuration          *metrics.Metric
-	objSearchDurationRelative                         *metrics.Metric
 )
 
 func init() {
@@ -43,8 +64,10 @@ func init() {
 // NewModuleInstance implements the modules.Module interface and returns
 // a new instance for each VU.
 func (r *RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
-	mi := &Native{vu: vu}
-	return mi
+	return &Native{
+		vu:      vu,
+		metrics: newMetricSet(vu.InitEnv().Registry),
+	}
 }
 
 // Exports implements the modules.Instance interface and returns the exports
@@ -119,31 +142,12 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 	tok.SetAuthKey(&key)
 	tok.SetExp(exp)
 
-	// register metrics
-	registry := metrics.NewRegistry()
-	objPutTotal, _ = registry.NewMetric("neofs_obj_put_total", metrics.Counter)
-	objPutFails, _ = registry.NewMetric("neofs_obj_put_fails", metrics.Counter)
-	objPutDuration, _ = registry.NewMetric("neofs_obj_put_duration", metrics.Trend, metrics.Time)
-
-	objGetTotal, _ = registry.NewMetric("neofs_obj_get_total", metrics.Counter)
-	objGetFails, _ = registry.NewMetric("neofs_obj_get_fails", metrics.Counter)
-	objGetDuration, _ = registry.NewMetric("neofs_obj_get_duration", metrics.Trend, metrics.Time)
-
-	objDeleteTotal, _ = registry.NewMetric("neofs_obj_delete_total", metrics.Counter)
-	objDeleteFails, _ = registry.NewMetric("neofs_obj_delete_fails", metrics.Counter)
-	objDeleteDuration, _ = registry.NewMetric("neofs_obj_delete_duration", metrics.Trend, metrics.Time)
-
-	cnrPutTotal, _ = registry.NewMetric("neofs_cnr_put_total", metrics.Counter)
-	cnrPutFails, _ = registry.NewMetric("neofs_cnr_put_fails", metrics.Counter)
-	cnrPutDuration, _ = registry.NewMetric("neofs_cnr_put_duration", metrics.Trend, metrics.Time)
-
-	objSearchDurationRelative, _ = registry.NewMetric("neofs_search_duration_relative", metrics.Trend, metrics.Time)
-
 	return &Client{
-		vu:     n.vu,
-		signer: signer,
-		owner:  signer.UserID(),
-		tok:    tok,
-		cli:    cli,
+		vu:      n.vu,
+		metrics: n.metrics,
+		signer:  signer,
+		owner:   signer.UserID(),
+		tok:     tok,
+		cli:     cli,
 	}, nil
 }
