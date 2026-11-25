@@ -16,6 +16,7 @@ from neo3.core.cryptography import ECPoint
 from neo3.wallet.utils import public_key_to_script_hash, script_hash_to_address
 from neo3.wallet.wallet import Wallet
 
+from helpers.cmd import PayloadGenerator
 from helpers.protobuf.object import service_pb2 as object_service_pb2
 from helpers.protobuf.object import types_pb2 as object_types_pb2
 from helpers.protobuf.refs import types_pb2 as refs_types_pb2
@@ -42,7 +43,7 @@ _wallet_cache = {}
 _wallet_lock = threading.Lock()
 _session_cache = {}
 _session_lock = threading.Lock()
-_payload_cache = {}
+_payload_generators = {}
 _payload_lock = threading.Lock()
 _container_ids = {}
 _API_VERSION = None
@@ -154,18 +155,22 @@ def _channel(endpoint):
         return cached
 
 
-def _read_payload(payload_filepath):
+def _payload_generator(payload_size_kb):
+    size_kb = int(payload_size_kb)
     with _payload_lock:
-        cached = _payload_cache.get(payload_filepath)
-        if cached is None:
-            with open(payload_filepath, "rb") as f:
-                payload = f.read()
-            cached = {
-                "payload": payload,
-                "sha256": hashlib.sha256(payload).digest(),
-            }
-            _payload_cache[payload_filepath] = cached
-        return cached
+        gen = _payload_generators.get(size_kb)
+        if gen is None:
+            gen = PayloadGenerator(size_kb)
+            _payload_generators[size_kb] = gen
+        return gen
+
+
+def _next_payload(payload_size_kb):
+    payload = _payload_generator(payload_size_kb).next_payload()
+    return {
+        "payload": payload,
+        "sha256": hashlib.sha256(payload).digest(),
+    }
 
 
 def _owner_id(address):
@@ -278,19 +283,16 @@ def _object_header(keys, container_id, payload_info):
 
 
 def _chunk_request(payload_info, keys, session):
-    with _payload_lock:
-        if payload_info.get("chunk_request") is None:
-            request = object_service_pb2.PutRequest()
-            request.body.chunk = payload_info["payload"]
-            request.meta_header.CopyFrom(session["meta"])
-            request.verify_header.CopyFrom(
-                _verification_header(
-                    keys["signer"].sign(request.body.SerializeToString(deterministic=True)),
-                    session["meta_sig"],
-                )
-            )
-            payload_info["chunk_request"] = request
-        return payload_info["chunk_request"]
+    request = object_service_pb2.PutRequest()
+    request.body.chunk = payload_info["payload"]
+    request.meta_header.CopyFrom(session["meta"])
+    request.verify_header.CopyFrom(
+        _verification_header(
+            keys["signer"].sign(request.body.SerializeToString(deterministic=True)),
+            session["meta_sig"],
+        )
+    )
+    return request
 
 
 def _init_request(header, keys, session):
@@ -334,9 +336,9 @@ def _put_object(endpoint, container, payload_info, keys):
     return base58.b58encode(response.body.object_id.value).decode()
 
 
-def init_worker(payload_filepath, endpoints, wallet_file, wallet_config):
+def init_worker(payload_size_kb, endpoints, wallet_file, wallet_config):
     keys = load_wallet_keys(wallet_file, wallet_config)
-    _read_payload(payload_filepath)
+    _payload_generator(payload_size_kb)
     if isinstance(endpoints, str):
         endpoints = [endpoints]
     for endpoint in endpoints:
@@ -348,12 +350,12 @@ def worker_ready():
     return True
 
 
-def upload_objects(jobs, payload_filepath, endpoints, wallet_file, wallet_config, threads=1):
-    init_worker(payload_filepath, endpoints, wallet_file, wallet_config)
+def upload_objects(jobs, payload_size_kb, endpoints, wallet_file, wallet_config, threads=1):
+    init_worker(payload_size_kb, endpoints, wallet_file, wallet_config)
     if threads <= 1 or len(jobs) <= 1:
         return [
             (container, upload_object(
-                container, payload_filepath, endpoints, wallet_file, wallet_config, start_index,
+                container, payload_size_kb, endpoints, wallet_file, wallet_config, start_index,
             ))
             for container, start_index in jobs
         ]
@@ -364,7 +366,7 @@ def upload_objects(jobs, payload_filepath, endpoints, wallet_file, wallet_config
             executor.submit(
                 upload_object,
                 container,
-                payload_filepath,
+                payload_size_kb,
                 endpoints,
                 wallet_file,
                 wallet_config,
@@ -377,9 +379,9 @@ def upload_objects(jobs, payload_filepath, endpoints, wallet_file, wallet_config
     return results
 
 
-def upload_object(container, payload_filepath, endpoints, wallet_file, wallet_config, start_index=0):
+def upload_object(container, payload_size_kb, endpoints, wallet_file, wallet_config, start_index=0):
     keys = load_wallet_keys(wallet_file, wallet_config)
-    payload_info = _read_payload(payload_filepath)
+    payload_info = _next_payload(payload_size_kb)
     if isinstance(endpoints, str):
         endpoints = [endpoints]
 

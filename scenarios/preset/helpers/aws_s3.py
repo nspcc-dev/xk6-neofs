@@ -85,10 +85,11 @@ def create_bucket(endpoint, versioning, location):
     return bucket_name
 
 
-def upload_object(bucket, payload_filepath, endpoints, start_index=0):
+def upload_object(bucket, payload_gen, endpoints, start_index=0):
     max_retries = 5
     delay_after_failure = 1
     object_name = str(uuid.uuid4())
+    payload = payload_gen.next_payload()
     if isinstance(endpoints, str):
         endpoints = [endpoints]
 
@@ -96,8 +97,7 @@ def upload_object(bucket, payload_filepath, endpoints, start_index=0):
         endpoint = endpoints[(start_index + attempt) % len(endpoints)]
         client = _get_client(endpoint)
         try:
-            with open(payload_filepath, 'rb') as body:
-                client.put_object(Bucket=bucket, Key=object_name, Body=body)
+            client.put_object(Bucket=bucket, Key=object_name, Body=payload)
             return object_name
         except (BotoCoreError, ClientError, OSError) as e:
             print(f" > Object {object_name} has not been uploaded to {endpoint} "

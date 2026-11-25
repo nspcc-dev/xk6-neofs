@@ -6,9 +6,8 @@ import multiprocessing
 import os
 import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-from os.path import expanduser
 
-from helpers.cmd import endpoint_for, parse_endpoints, random_payload
+from helpers.cmd import endpoint_for, parse_endpoints
 from helpers.neofs_cli import create_container
 from helpers.neofs_grpc import init_worker, upload_objects, worker_ready
 
@@ -40,7 +39,9 @@ def main():
 
     container_list = []
     objects_struct = []
-    payload_filepath = expanduser("~") + '/data_file_' + args.size + 'k'
+    payload_size_kb = int(args.size)
+    if payload_size_kb < 0:
+        raise ValueError(f'size must be non-negative, got {payload_size_kb}')
     workers = args.workers
     preload_obj = int(args.preload_obj)
 
@@ -57,14 +58,11 @@ def main():
             data_json = json.load(f)
             container_list = data_json['containers']
 
-    random_payload(payload_filepath, args.size)
-    print(" > Create random payload: Completed")
-
     with ProcessPoolExecutor(
         max_workers=nprocs,
         mp_context=multiprocessing.get_context("spawn"),
         initializer=init_worker,
-        initargs=(payload_filepath, endpoints, wallet, wallet_config),
+        initargs=(payload_size_kb, endpoints, wallet, wallet_config),
     ) as executor:
         ready = [executor.submit(worker_ready) for _ in range(nprocs)]
 
@@ -108,7 +106,7 @@ def main():
             executor.submit(
                 upload_objects,
                 chunk,
-                payload_filepath,
+                payload_size_kb,
                 endpoints,
                 wallet,
                 wallet_config,

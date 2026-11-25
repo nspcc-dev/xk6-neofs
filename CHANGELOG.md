@@ -22,6 +22,7 @@ This document outlines major changes between releases.
 - Scenarios show p(99) in the summary (#179)
 - The samples of one request are sent together, with one timestamp, as k6's HTTP module does (#185)
 - gRPC requests go within one session token v2 for all operations and containers instead of a v1 token signed for every request (#186)
+- Preset scripts generate unique sliding-window payloads per object instead of reusing one static file (#187)
 
 ### Updated
 

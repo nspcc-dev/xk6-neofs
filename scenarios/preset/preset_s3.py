@@ -6,7 +6,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from helpers.aws_s3 import create_bucket, init_clients, upload_object
-from helpers.cmd import endpoint_for, parse_endpoints, random_payload
+from helpers.cmd import PayloadGenerator, endpoint_for, parse_endpoints
 
 parser = argparse.ArgumentParser()
 
@@ -28,7 +28,7 @@ print(args)
 def main():
     bucket_list = []
     objects_struct = []
-    payload_filepath = '/tmp/data_file_' + args.size + 'k'
+    payload_gen = PayloadGenerator(int(args.size))
     workers = args.workers
     preload_obj = int(args.preload_obj)
     endpoints = parse_endpoints(args.endpoint)
@@ -61,13 +61,11 @@ def main():
     print(f" > Buckets: {bucket_list}")
 
     print(f"Upload objects to each bucket: {args.preload_obj} ")
-    random_payload(payload_filepath, args.size)
-    print(" > Create random payload: Completed")
 
     start = time.monotonic()
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
-            executor.submit(upload_object, bucket, payload_filepath, endpoints, i): bucket
+            executor.submit(upload_object, bucket, payload_gen, endpoints, i): bucket
             for i, bucket in enumerate(
                 bucket for bucket in bucket_list for _ in range(preload_obj)
             )
