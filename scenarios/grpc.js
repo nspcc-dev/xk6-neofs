@@ -257,7 +257,7 @@ export function obj_delete() {
         return;
     }
 
-    obj_registry.deleteObject(obj.id);
+    obj_registry.deleteObject(obj.c_id, "", obj.id);
 }
 
 export function uuidv4() {

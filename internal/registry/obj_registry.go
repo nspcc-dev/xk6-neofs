@@ -22,7 +22,13 @@ const (
 	statusCreated = "created"
 )
 
-const bucketName = "_object"
+const (
+	bucketName = "_object"
+	// defaultPartition stores objects added without a container ID or S3 bucket.
+	defaultPartition = "_default"
+)
+
+var errObjectNotFound = errors.New("object doesn't exist")
 
 // ObjectInfo represents information about neoFS object that has been created
 // via gRPC/HTTP/S3 API.
@@ -60,12 +66,17 @@ func NewObjRegistry(ctx context.Context, dbFilePath string) *ObjRegistry {
 
 func (o *ObjRegistry) AddObject(cid, oid, s3Bucket, s3Key, payloadHash string) error {
 	return o.boltDB.Update(func(tx *bbolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte(bucketName))
+		root, err := tx.CreateBucketIfNotExists([]byte(bucketName))
 		if err != nil {
 			return err
 		}
 
-		id, err := b.NextSequence()
+		b, err := root.CreateBucketIfNotExists(partitionKey(cid, s3Bucket))
+		if err != nil {
+			return err
+		}
+
+		id, err := root.NextSequence()
 		if err != nil {
 			return err
 		}
@@ -89,16 +100,21 @@ func (o *ObjRegistry) AddObject(cid, oid, s3Bucket, s3Key, payloadHash string) e
 	})
 }
 
-func (o *ObjRegistry) SetObjectStatus(id uint64, newStatus string) error {
+func (o *ObjRegistry) SetObjectStatus(cid, s3Bucket string, id uint64, newStatus string) error {
 	return o.boltDB.Update(func(tx *bbolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte(bucketName))
-		if err != nil {
-			return err
+		root := tx.Bucket([]byte(bucketName))
+		if root == nil {
+			return errObjectNotFound
+		}
+
+		b := root.Bucket(partitionKey(cid, s3Bucket))
+		if b == nil {
+			return errObjectNotFound
 		}
 
 		objBytes := b.Get(encodeID(id))
 		if objBytes == nil {
-			return errors.New("object doesn't exist")
+			return errObjectNotFound
 		}
 
 		obj := new(ObjectInfo)
@@ -107,7 +123,7 @@ func (o *ObjRegistry) SetObjectStatus(id uint64, newStatus string) error {
 		}
 		obj.Status = newStatus
 
-		objBytes, err = json.Marshal(obj)
+		objBytes, err := json.Marshal(obj)
 		if err != nil {
 			return err
 		}
@@ -115,11 +131,16 @@ func (o *ObjRegistry) SetObjectStatus(id uint64, newStatus string) error {
 	})
 }
 
-func (o *ObjRegistry) DeleteObject(id uint64) error {
+func (o *ObjRegistry) DeleteObject(cid, s3Bucket string, id uint64) error {
 	return o.boltDB.Update(func(tx *bbolt.Tx) error {
-		b, err := tx.CreateBucketIfNotExists([]byte(bucketName))
-		if err != nil {
-			return err
+		root := tx.Bucket([]byte(bucketName))
+		if root == nil {
+			return nil
+		}
+
+		b := root.Bucket(partitionKey(cid, s3Bucket))
+		if b == nil {
+			return nil
 		}
 
 		return b.Delete(encodeID(id))
@@ -129,6 +150,16 @@ func (o *ObjRegistry) DeleteObject(id uint64) error {
 func (o *ObjRegistry) Close() error {
 	o.cancel()
 	return o.boltDB.Close()
+}
+
+func partitionKey(cid, s3Bucket string) []byte {
+	if cid != "" {
+		return []byte("cid:" + cid)
+	}
+	if s3Bucket != "" {
+		return []byte("s3:" + s3Bucket)
+	}
+	return []byte(defaultPartition)
 }
 
 func encodeID(id uint64) []byte {

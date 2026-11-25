@@ -94,7 +94,7 @@ export function obj_verify() {
 
     const obj_status = verify_object_with_retries(obj, 3);
     obj_counters[obj_status].add(1);
-    obj_registry.setObjectStatus(obj.id, obj_status);
+    obj_registry.setObjectStatus(obj.c_id, obj.s3_bucket, obj.id, obj_status);
 }
 
 function verify_object_with_retries(obj, attempts) {

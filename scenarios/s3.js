@@ -254,7 +254,7 @@ export function obj_delete() {
         return;
     }
 
-    obj_registry.deleteObject(obj.id);
+    obj_registry.deleteObject("", obj.s3_bucket, obj.id);
 }
 
 export function uuidv4() {
