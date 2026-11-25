@@ -22,6 +22,7 @@ This document outlines major changes between releases.
 - Scenarios show p(99) in the summary (#179)
 - The samples of one request are sent together, with one timestamp, as k6's HTTP module does (#185)
 - gRPC requests go within one session token v2 for all operations and containers instead of a v1 token signed for every request (#186)
+- BUCKET_SELECTION applies to DELETE operations in S3 and gRPC scenarios, and the object registry is now partitioned by bucket/container (incompatible with older registry files) (#188)
 
 ### Updated
 

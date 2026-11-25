@@ -62,16 +62,26 @@ const list_prefix = __ENV.LIST_PREFIX || '';
 
 const delete_age = __ENV.DELETE_AGE ? parseInt(__ENV.DELETE_AGE) : undefined;
 let obj_to_delete_selector = undefined;
-if (registry_enabled && delete_age) {
-    obj_to_delete_selector = registry.getSelector(
-        __ENV.REGISTRY_FILE,
-        "obj_to_delete",
-        __ENV.SELECTION_SIZE ? parseInt(__ENV.SELECTION_SIZE) : 0,
-        {
+
+function get_delete_selector() {
+    if (!obj_to_delete_selector) {
+        const filter = {
             status: "created",
             age: delete_age,
+        };
+        let name = "obj_to_delete";
+        if (bucket) {
+            name = `obj_to_delete_${bucket}`;
+            filter.s3_bucket = bucket;
         }
-    );
+        obj_to_delete_selector = registry.getSelector(
+            __ENV.REGISTRY_FILE,
+            name,
+            __ENV.SELECTION_SIZE ? parseInt(__ENV.SELECTION_SIZE) : 0,
+            filter
+        );
+    }
+    return obj_to_delete_selector;
 }
 
 const generator = datagen.generator(1024 * parseInt(__ENV.WRITE_OBJ_SIZE));
@@ -124,7 +134,7 @@ if (list_vu_count > 0) {
 
 const delete_vu_count = parseInt(__ENV.DELETERS || '0');
 if (delete_vu_count > 0) {
-    if (!obj_to_delete_selector) {
+    if (!registry_enabled || !delete_age) {
         throw 'Positive DELETE worker number without a proper object selector';
     }
 
@@ -243,7 +253,7 @@ export function obj_delete() {
         sleep(__ENV.SLEEP_DELETE);
     }
 
-    const obj = obj_to_delete_selector.nextObject();
+    const obj = get_delete_selector().nextObject();
     if (!obj) {
         return;
     }
