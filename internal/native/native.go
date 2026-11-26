@@ -88,6 +88,9 @@ func (n *Native) Exports() modules.Exports {
 	return modules.Exports{Default: n}
 }
 
+// defaultDialTimeout is what the SDK takes for a dial timeout of 0.
+const defaultDialTimeout = 5 * time.Second
+
 func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTimeout int) (*Client, error) {
 	var (
 		cli *client.Client
@@ -131,7 +134,17 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 	exp := uint64(math.MaxUint64)
 	var prmSessionCreate client.PrmSessionCreate
 	prmSessionCreate.SetExp(exp)
-	sessionResp, err := cli.SessionCreate(n.vu.Context(), signer, prmSessionCreate)
+	unaryTimeout := time.Duration(streamTimeout) * time.Second
+	// Opening the session is part of connecting, and connect() is called
+	// in the init stage, on a context that nothing ends: it gets the dial
+	// timeout, as the dial itself and the request the SDK makes with it.
+	connectTimeout := time.Duration(dialTimeout) * time.Second
+	if connectTimeout <= 0 {
+		connectTimeout = defaultDialTimeout
+	}
+	sessionCtx, cancel := unaryContext(n.vu.Context(), connectTimeout)
+	sessionResp, err := cli.SessionCreate(sessionCtx, signer, prmSessionCreate)
+	cancel()
 	if err != nil {
 		return nil, fmt.Errorf("dial endpoint: %w", err)
 	}
@@ -154,6 +167,8 @@ func (n *Native) Connect(endpoint, hexPrivateKey string, dialTimeout, streamTime
 		owner:   signer.UserID(),
 		tok:     tok,
 		cli:     cli,
+
+		unaryTimeout: unaryTimeout,
 	}, nil
 }
 

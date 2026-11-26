@@ -35,6 +35,9 @@ type (
 		owner   user.ID
 		tok     session.Token
 		cli     *client.Client
+		// unaryTimeout bounds a request that is one exchange with the
+		// node: see [Client.unary]. Zero for no limit.
+		unaryTimeout time.Duration
 	}
 
 	PutResponse struct {
@@ -110,6 +113,24 @@ func (c *Client) Put(containerID string, headers map[string]string, payload sobe
 	return PutResponse{Success: true, ObjectID: resp.StoredObjectID().String()}
 }
 
+// unary returns the context for a request that is a single exchange with
+// the node and not a stream: HEAD, DELETE, one page of a listing. The SDK
+// applies the stream timeout to every message of a stream and nothing to
+// such a request, which then waits for as long as the VU lives: a node that
+// stops answering holds the VU for the rest of the test, and the request is
+// never reported, neither as done nor as failed. With a stream timeout set
+// in connect(), the same time is the limit for these requests.
+func (c *Client) unary() (context.Context, context.CancelFunc) {
+	return unaryContext(c.vu.Context(), c.unaryTimeout)
+}
+
+func unaryContext(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout <= 0 {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, timeout)
+}
+
 func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 	cliContainerID := parseContainerID(containerID)
 	cliObjectID := parseObjectID(objectID)
@@ -119,7 +140,9 @@ func (c *Client) Delete(containerID string, objectID string) DeleteResponse {
 	var prm client.PrmObjectDelete
 	prm.WithinSessionV2(c.tok)
 
-	_, err := c.cli.ObjectDelete(c.vu.Context(), cliContainerID, cliObjectID, c.signer, prm)
+	ctx, cancel := c.unary()
+	_, err := c.cli.ObjectDelete(ctx, cliContainerID, cliObjectID, c.signer, prm)
+	cancel()
 	if err != nil {
 		req.Fail(c.metrics.objDeleteFails)
 		return DeleteResponse{Success: false, Error: err.Error()}
@@ -173,7 +196,9 @@ func (c *Client) Head(containerID, objectID string) HeadResponse {
 	prm.WithinSessionV2(c.tok)
 	prm.SkipChecksumVerification()
 
-	_, err := c.cli.ObjectHead(c.vu.Context(), cliContainerID, cliObjectID, c.signer, prm)
+	ctx, cancel := c.unary()
+	_, err := c.cli.ObjectHead(ctx, cliContainerID, cliObjectID, c.signer, prm)
+	cancel()
 	if err != nil {
 		req.Fail(c.metrics.objHeadFails)
 		return HeadResponse{Success: false, Error: err.Error()}
@@ -239,7 +264,10 @@ func (c *Client) List(containerID, prefix string) ListResponse {
 	var count int
 	var cursor string
 	for {
-		items, next, err := c.cli.SearchObjects(c.vu.Context(), cliContainerID, filters, attrs, cursor, c.signer, client.SearchObjectsOptions{})
+		// Every page is a request of its own, with a limit of its own.
+		ctx, cancel := c.unary()
+		items, next, err := c.cli.SearchObjects(ctx, cliContainerID, filters, attrs, cursor, c.signer, client.SearchObjectsOptions{})
+		cancel()
 		if err != nil {
 			req.Fail(c.metrics.objListFails)
 			return ListResponse{Success: false, Error: err.Error()}

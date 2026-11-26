@@ -65,8 +65,13 @@ See [scenarios/run_scenarios.md](./scenarios/run_scenarios.md) for S3 presets an
 Create native client with `connect` method. Arguments:
 - neofs storage node endpoint
 - hex encoded private key (empty value produces random key)
-- dial timeout in seconds (0 for the default value)
-- stream timeout in seconds (0 for the default value)
+- dial timeout in seconds (0 for the default value, 5 s): the time connecting
+  may take, which includes the request that opens the client's session
+- stream timeout in seconds (0 for the default value): the time one message
+  of a PUT or GET stream may take. With a value above 0 it is also the limit
+  for a request that is not a stream (HEAD, DELETE, every page of a LIST),
+  which fails with "context deadline exceeded" when it runs out. With 0 such
+  a request has no limit and waits for as long as the node takes
 
 ```js
 import native from 'k6/x/neofs/native';
