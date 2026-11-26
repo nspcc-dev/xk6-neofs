@@ -14,6 +14,7 @@ import (
 	neofsecdsa "github.com/nspcc-dev/neofs-sdk-go/crypto/ecdsa"
 	oidtest "github.com/nspcc-dev/neofs-sdk-go/object/id/test"
 	protonetmap "github.com/nspcc-dev/neofs-sdk-go/proto/netmap"
+	protoobject "github.com/nspcc-dev/neofs-sdk-go/proto/object"
 	protosession "github.com/nspcc-dev/neofs-sdk-go/proto/session"
 	"github.com/nspcc-dev/neofs-sdk-go/version"
 	"github.com/stretchr/testify/require"
@@ -65,11 +66,18 @@ func TestUnaryContext(t *testing.T) {
 type quietNode struct {
 	protonetmap.UnimplementedNetmapServiceServer
 	protosession.UnimplementedSessionServiceServer
+	protoobject.UnimplementedObjectServiceServer
 
 	key  *keys.PrivateKey
 	deaf atomic.Bool
 	// waiting counts the requests that are waiting for an answer.
 	waiting atomic.Int64
+
+	createDeadline      atomic.Int64
+	searchFirstPage     atomic.Bool
+	searchPages         atomic.Int64
+	searchPage1Deadline atomic.Int64
+	searchPage2Deadline atomic.Int64
 }
 
 func (n *quietNode) signer() neofscrypto.Signer { return neofsecdsa.Signer(n.key.PrivateKey) }
@@ -85,6 +93,11 @@ func (n *quietNode) LocalNodeInfo(context.Context, *protonetmap.LocalNodeInfoReq
 }
 
 func (n *quietNode) Create(ctx context.Context, _ *protosession.CreateRequest) (*protosession.CreateResponse, error) {
+	if d, ok := ctx.Deadline(); ok {
+		n.createDeadline.Store(d.UnixNano())
+	} else {
+		n.createDeadline.Store(0)
+	}
 	if n.deaf.Load() {
 		return nil, n.wait(ctx)
 	}
@@ -93,6 +106,46 @@ func (n *quietNode) Create(ctx context.Context, _ *protosession.CreateRequest) (
 	var err error
 	resp.VerifyHeader, err = neofscrypto.SignResponseWithBuffer(n.signer(), resp, nil)
 	return resp, err
+}
+
+func (n *quietNode) Head(ctx context.Context, _ *protoobject.HeadRequest) (*protoobject.HeadResponse, error) {
+	return nil, n.wait(ctx)
+}
+
+func (n *quietNode) Delete(ctx context.Context, _ *protoobject.DeleteRequest) (*protoobject.DeleteResponse, error) {
+	return nil, n.wait(ctx)
+}
+
+func (n *quietNode) SearchV2(ctx context.Context, req *protoobject.SearchV2Request) (*protoobject.SearchV2Response, error) {
+	page := n.searchPages.Add(1)
+	if d, ok := ctx.Deadline(); ok {
+		switch page {
+		case 1:
+			n.searchPage1Deadline.Store(d.UnixNano())
+		case 2:
+			n.searchPage2Deadline.Store(d.UnixNano())
+		}
+	}
+	if n.searchFirstPage.Load() && req.GetBody().GetCursor() == "" {
+		timer := time.NewTimer(400 * time.Millisecond)
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		}
+		attrs := make([]string, len(req.GetBody().GetAttributes()))
+		return &protoobject.SearchV2Response{
+			Body: &protoobject.SearchV2Response_Body{
+				Result: []*protoobject.SearchV2Response_OIDWithMeta{{
+					Id:         oidtest.ID().ProtoMessage(),
+					Attributes: attrs,
+				}},
+				Cursor: "page2",
+			},
+		}, nil
+	}
+	return nil, n.wait(ctx)
 }
 
 func (n *quietNode) wait(ctx context.Context) error {
@@ -109,12 +162,13 @@ func startQuietNode(t *testing.T) (*quietNode, string) {
 	key, err := keys.NewPrivateKey()
 	require.NoError(t, err)
 	n := &quietNode{key: key}
-	// Anything but the two services below is asked of nobody.
+	// Anything but the services below is asked of nobody.
 	srv := grpc.NewServer(grpc.UnknownServiceHandler(func(_ any, stream grpc.ServerStream) error {
 		return n.wait(stream.Context())
 	}))
 	protonetmap.RegisterNetmapServiceServer(srv, n)
 	protosession.RegisterSessionServiceServer(srv, n)
+	protoobject.RegisterObjectServiceServer(srv, n)
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	go func() { _ = srv.Serve(lis) }()
@@ -205,4 +259,51 @@ func TestRequestsToAQuietNodeEnd(t *testing.T) {
 	require.ErrorContains(t, err, "context deadline exceeded")
 	require.GreaterOrEqual(t, time.Since(start), 900*time.Millisecond)
 	require.Less(t, time.Since(start), 4*time.Second)
+}
+
+func TestListPerPageTimeout(t *testing.T) {
+	node, addr := startQuietNode(t)
+	node.searchFirstPage.Store(true)
+	_, n, samples := testVU(t)
+
+	c, err := n.Connect("grpc://"+addr, "", 5, 1)
+	require.NoError(t, err)
+
+	start := time.Now()
+	r := c.List(cidtest.ID().String(), "prefix/")
+	took := time.Since(start)
+
+	require.False(t, r.Success)
+	require.Contains(t, r.Error, "context deadline exceeded")
+	require.Equal(t, int64(2), node.searchPages.Load())
+
+	d1 := node.searchPage1Deadline.Load()
+	d2 := node.searchPage2Deadline.Load()
+	require.NotZero(t, d1)
+	require.NotZero(t, d2)
+	require.GreaterOrEqual(t, time.Unix(0, d2).Sub(time.Unix(0, d1)), 300*time.Millisecond)
+	require.GreaterOrEqual(t, took, 1300*time.Millisecond)
+	require.Less(t, took, 5*time.Second)
+
+	require.Len(t, samples, 1)
+	reported := (<-samples).GetSamples()
+	require.Len(t, reported, 2)
+	require.Equal(t, "neofs_obj_list_total", reported[0].Metric.Name)
+	require.Equal(t, "neofs_obj_list_fails", reported[1].Metric.Name)
+}
+
+func TestConnectDefaultDialTimeout(t *testing.T) {
+	node, addr := startQuietNode(t)
+	_, n, _ := testVU(t)
+
+	before := time.Now()
+	_, err := n.Connect("grpc://"+addr, "", 0, 0)
+	after := time.Now()
+	require.NoError(t, err)
+
+	deadlineNano := node.createDeadline.Load()
+	require.NotZero(t, deadlineNano)
+	deadline := time.Unix(0, deadlineNano)
+	require.Greater(t, deadline.Sub(before), defaultDialTimeout-time.Second)
+	require.Less(t, deadline.Sub(after), defaultDialTimeout+time.Second)
 }
