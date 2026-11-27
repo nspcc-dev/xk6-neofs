@@ -74,7 +74,24 @@ func (r *Registry) open(dbFilePath string) *ObjRegistry {
 	return registry
 }
 
-func (r *Registry) GetSelector(dbFilePath string, name string, cacheSize int, filter map[string]string) *ObjSelector {
+// VUSelector binds a shared ObjSelector to a VU's context so NextObject
+// unblocks when the VU stops.
+type VUSelector struct {
+	vu       modules.VU
+	selector *ObjSelector
+}
+
+// NextObject returns the next matching object or nil if the VU or registry context is done.
+func (s *VUSelector) NextObject() *ObjectInfo {
+	return s.selector.NextObject(s.vu.Context())
+}
+
+// Count returns total number of objects that match filter of the selector.
+func (s *VUSelector) Count() (int, error) {
+	return s.selector.Count()
+}
+
+func (r *Registry) GetSelector(dbFilePath string, name string, cacheSize int, filter map[string]string) *VUSelector {
 	objFilter, err := parseFilter(filter)
 	if err != nil {
 		panic(err)
@@ -91,12 +108,15 @@ func (r *Registry) GetSelector(dbFilePath string, name string, cacheSize int, fi
 	} else if !reflect.DeepEqual(selector.filter, objFilter) {
 		panic(fmt.Sprintf("selector %s already has been created with a different filter", name))
 	}
-	return selector
+	return &VUSelector{vu: r.vu, selector: selector}
 }
 
 func parseFilter(filter map[string]string) (*ObjFilter, error) {
-	objFilter := ObjFilter{}
-	objFilter.Status = filter["status"]
+	objFilter := ObjFilter{
+		Status:   filter["status"],
+		CID:      filter["c_id"],
+		S3Bucket: filter["s3_bucket"],
+	}
 
 	if ageStr := filter["age"]; ageStr != "" {
 		age, err := strconv.ParseInt(ageStr, 10, 64)

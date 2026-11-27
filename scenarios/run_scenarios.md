@@ -49,7 +49,7 @@ $ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=8192 -e READERS=20 -e WRITERS=20 -e 
 Options (in addition to the common options):
   * `GRPC_ENDPOINTS` - GRPC endpoints of neoFS in format `host:port`. To specify multiple endpoints separate them by comma.
   * `ENDPOINT_SELECTION` - endpoint selection algorithm. Possible values: `random` (default) picks an endpoint for each request, `round-robin` assigns one endpoint per VU; any other value is an error.
-  * `BUCKET_SELECTION` - container selection algorithm for VU's object write and read operations. Possible values: `random` (default), `round-robin`; any other value is an error.
+  * `BUCKET_SELECTION` - container selection algorithm for VU's object operations (write, read, stat, list, delete). Possible values: `random` (default), `round-robin`; any other value is an error.
   * `LISTERS` - number of VUs performing list operations.
   * `SLEEP_LIST` - time interval (in seconds) between listing VU iterations.
   * `LIST_PREFIX` - prefix to list. The default is empty, which lists the whole container. One LIST iteration follows all pages, so its duration grows with the number of objects.
@@ -114,7 +114,7 @@ $ ./k6 run -e DURATION=60 -e WRITE_OBJ_SIZE=8192 -e READERS=20 -e WRITERS=20 -e 
 Options (in addition to the common options):
   * `S3_ENDPOINTS` - endpoints of S3 gateways in format `host:port`. To specify multiple endpoints separate them by comma.
   * `ENDPOINT_SELECTION` - endpoint selection algorithm. Possible values: `random` (default) picks an endpoint for each request, `round-robin` assigns one endpoint per VU; any other value is an error.
-  * `BUCKET_SELECTION` - bucket selection algorithm for VU's object write and read operations. Possible values: `random` (default), `round-robin`; any other value is an error.
+  * `BUCKET_SELECTION` - bucket selection algorithm for VU's object operations (write, read, stat, list, delete). Possible values: `random` (default), `round-robin`; any other value is an error.
   * `LISTERS` - number of VUs performing list operations.
   * `SLEEP_LIST` - time interval (in seconds) between listing VU iterations.
   * `LIST_PREFIX` - prefix to list. The default is empty, which lists the whole bucket. One LIST iteration follows all pages, so its duration grows with the number of objects.
