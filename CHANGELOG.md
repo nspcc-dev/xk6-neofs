@@ -15,6 +15,7 @@ This document outlines major changes between releases.
 - Thresholds on the extension's metrics, which were not registered in k6 (#180)
 - data_sent and data_received were not seen by k6 outputs and raced with k6 (#180)
 - S3 GET reported success when reading the body failed, and did not close it (#181)
+- gRPC HEAD, DELETE and LIST had no deadline and could hold a VU for the rest of a test; the stream timeout now bounds them, and the dial timeout the request that opens the session (#191)
 
 ### Changed
 - ENDPOINT_SELECTION=random selects an endpoint for each request in S3 and gRPC scenarios (#164)
